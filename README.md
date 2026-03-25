@@ -21,3 +21,29 @@ git config --global user.email ЭЛЕКТРОННАЯ-ПОЧТА
 ```bash
 git config --global user.name ФАМИЛИЯ-ИМЯ
 ```
+
+
+6) Скопируйте репозиторий с `GitHub`'а
+
+```bash
+git clone https://github.com/Kilisaki/risk-predictor
+
+```
+
+### Настройте `Docker`
+
+1) Установите `docker`
+
+2) Выдайте `docker`'у права супер-пользователя, чтобы не вводить постоянно `sudo` (если на `Linux`)
+
+```bash
+sudo usermod -aG docker $USER
+```
+
+3) Создайте общие сети
+
+```bash
+docker network create ml-back
+docker network create front-back
+
+```
