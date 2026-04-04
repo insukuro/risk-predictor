@@ -1,0 +1,109 @@
+services:
+  # PostgreSQL Database
+  database:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/database.Dockerfile
+    container_name: risk-predictor-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-risk_predictor_db}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/docker/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - risk-predictor-network
+    restart: unless-stopped
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/backend.Dockerfile
+    container_name: risk-predictor-backend
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@database:5432/${POSTGRES_DB:-risk_predictor_db}
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      API_WORKERS: 4
+      MODEL_VERSION: v1.0
+      ENVIRONMENT: production
+    volumes:
+      - ./backend:/app/backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - risk-predictor-network
+    restart: unless-stopped
+    command: >
+      sh -c "
+      python -c 'from backend.db.models import Base; from backend.db.session import engine; Base.metadata.create_all(bind=engine)' &&
+      python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 4
+      "
+  ml-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/ml_service.Dockerfile
+    container_name: risk-predictor-ml
+    environment:
+      MODEL_VERSION: v1.0
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - risk-predictor-network
+    restart: unless-stopped
+  # Frontend Web Application
+  frontend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/frontend.Dockerfile
+    container_name: risk-predictor-frontend
+    ports:
+      - "22000:22000"
+    environment:
+      # ВАЖНО: используем имя сервиса backend, а не localhost
+      VITE_API_URL: http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:22000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - risk-predictor-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  risk-predictor-network:
+    driver: bridge

@@ -62,12 +62,25 @@ docker network create front-back
 
 # Project tree
 ```
+
+```
+```
 risk-predictor
 ├─ .$idef0.xml.bkp
+├─ .dockerignore
+├─ DELIVERY_SUMMARY.md
+├─ DOCKER_GUIDE.md
+├─ IMPLEMENTATION_CHECKLIST.md
+├─ INDEX.md
 ├─ LICENSE
+├─ MVP_GUIDE.md
+├─ PROJECT_SUMMARY.md
+├─ QUICK_START.md
 ├─ README.md
 ├─ backend
+│  ├─ __init__.py
 │  ├─ api
+│  │  ├─ __init__.py
 │  │  ├─ dependencies
 │  │  │  ├─ __init__.py
 │  │  │  └─ auth.py
@@ -91,6 +104,7 @@ risk-predictor
 │     ├─ __init__.py
 │     └─ risk_predictor.py
 ├─ docker-compose.yml
+├─ docker-helper.sh
 ├─ frontend
 │  ├─ README.md
 │  ├─ eslint.config.js
@@ -102,8 +116,18 @@ risk-predictor
 │  ├─ src
 │  │  ├─ App.css
 │  │  ├─ App.tsx
+│  │  ├─ api
+│  │  │  └─ client.ts
+│  │  ├─ api.ts
 │  │  ├─ assets
 │  │  │  └─ react.svg
+│  │  ├─ components
+│  │  │  ├─ PatientInfo.css
+│  │  │  ├─ PatientInfo.tsx
+│  │  │  ├─ PredictForm.css
+│  │  │  ├─ PredictForm.tsx
+│  │  │  ├─ PredictionHistory.css
+│  │  │  └─ PredictionHistory.tsx
 │  │  ├─ index.css
 │  │  └─ main.tsx
 │  ├─ tsconfig.app.json
@@ -118,11 +142,16 @@ risk-predictor
 │  ├─ docker
 │  │  ├─ backend.Dockerfile
 │  │  ├─ database.Dockerfile
-│  │  └─ frontend.Dockerfile
+│  │  ├─ frontend.Dockerfile
+│  │  └─ init-db.sql
 │  ├─ nginx
 │  │  └─ nginx.conf
 │  └─ terraform
 ├─ requirements.txt
+├─ setup.sh
+├─ start_backend.sh
+├─ start_frontend.sh
+├─ test_backend.py
 └─ Не подтверждено 378621.~
 
 ```

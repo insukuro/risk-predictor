@@ -1,0 +1,80 @@
+# Docker Build Context Ignore
+# Files that should not be included in Docker build context
+
+# Version Control
+.git
+.gitignore
+.github
+
+# IDEs & Editors
+.vscode
+.idea
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+.npm
+
+# Dependencies
+.venv
+
+# Documentation
+docs/
+*.md
+README.md
+
+# Tests
+test/
+tests/
+coverage/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+tmp/
+temp/
+*.log
+*.tmp
+
+# Build artifacts
+frontend/dist
+frontend/build
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# CI/CD
+.gitlab-ci.yml
+.github/
+
+# Infrastructure
+terraform/
+kubernetes/
+
+# Other
+.docker
+compose-override.yml
+docker-compose.override.yml

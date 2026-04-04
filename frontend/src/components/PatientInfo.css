@@ -1,0 +1,83 @@
+.patient-info-card {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  margin: 1rem auto;
+}
+
+.patient-info-card h2 {
+  color: #333;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.patient-info-card .form-group {
+  margin-bottom: 1rem;
+}
+
+.patient-info-card label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.patient-info-card input,
+.patient-info-card select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+.patient-info-card input:focus,
+.patient-info-card select:focus {
+  outline: none;
+  border-color: #4285f4;
+  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+}
+
+.patient-info-card .btn-primary {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  margin-top: 1rem;
+}
+
+.patient-info-card .btn-primary:hover:not(:disabled) {
+  background-color: #357ae8;
+}
+
+.patient-info-card .btn-primary:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.patient-info-card .error {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #c62828;
+}
+
+.patient-info-card .success {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #2e7d32;
+}

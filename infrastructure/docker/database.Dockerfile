@@ -1,20 +1,27 @@
-# Используем официальный образ PostgreSQL
+# Database Dockerfile - PostgreSQL with initialization
+# This extends the official PostgreSQL image with custom initialization
+
 FROM postgres:16-alpine
 
-# Устанавливаем переменные окружения
-ENV POSTGRES_USER=myuser \
-    POSTGRES_PASSWORD=mypassword \
-    POSTGRES_DB=mydb \
-    POSTGRES_INITDB_ARGS="--encoding=UTF-8 --locale=ru_RU.UTF-8"
+# Set environment variables
+ENV POSTGRES_USER=postgres \
+    POSTGRES_PASSWORD=postgres \
+    POSTGRES_DB=risk_predictor_db \
+    PGDATA=/var/lib/postgresql/data/pgdata
 
-# Копируем скрипты инициализации
-COPY ./init-scripts /docker-entrypoint-initdb.d/
+# Install additional utilities
+RUN apk add --no-cache \
+    postgresql-contrib \
+    curl
 
-# Копируем пользовательскую конфигурацию PostgreSQL
-COPY ./postgresql.conf /etc/postgresql/postgresql.conf
+# Copy initialization scripts
+COPY ./infrastructure/docker/init-db.sql /docker-entrypoint-initdb.d/01-init.sql
 
-# Изменяем порт (опционально)
+# Expose PostgreSQL port
 EXPOSE 5432
 
-# Запускаем PostgreSQL с пользовательским конфигом
-CMD ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=5 \
+    CMD pg_isready -U postgres || exit 1
+
+# Use the default entrypoint from the base image
