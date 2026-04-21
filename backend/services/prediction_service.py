@@ -1,4 +1,6 @@
 """Prediction service - handles risk prediction logic."""
+from datetime import datetime
+
 import requests
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List, Optional
@@ -12,55 +14,20 @@ class PredictionService:
     """Service for handling risk predictions."""
 
     @staticmethod
-    def create_prediction(db: Session, request: PredictRequest) -> Prediction:
-        """
-        Create a new prediction.
-        
-        Args:
-            db: Database session
-            request: Prediction request with patient, operation, and features
-            
-        Returns:
-            Created prediction record
-        """
-        # Get or create patient
-        if request.patient.id:
-            patient = PatientService.get(db, request.patient.id)
-            if not patient:
-                raise ValueError(f"Patient with ID {request.patient.id} not found")
-        else:
-            patient = PatientService.create(
-                db,
-                sex=request.patient.sex,
-                birth_date=request.patient.birth_date
-            )
-
-        # Create operation
-        operation = OperationService.create(
-            db,
-            patient_id=patient.id,
-            operation_type=request.operation.type,
-            date_=request.operation.date
-        )
-
-        # Store clinical data
-        clinical_data = ClinicalData(
-            operation_id=operation.id,
-            features=request.features
-        )
-        db.add(clinical_data)
-        db.commit()
-
-        # Make prediction using ML model service
-        risk_score, risk_level = PredictionService._call_ml_service(request.features)
-
-        # Store prediction
+    def create_prediction_from_ml_result(
+        db: Session, 
+        operation_id: int, 
+        ml_result: Dict[str, Any]
+    ) -> Prediction:
+        """Create prediction from ML service result."""
         prediction = Prediction(
-            operation_id=operation.id,
-            risk_score=risk_score,
-            risk_level=risk_level,
-            model_version="1.0.0"
+            operation_id=operation_id,
+            risk_score=ml_result["risk_score"],
+            risk_level=ml_result["risk_level"],
+            model_version=ml_result["version"],
+            created_at=datetime.now()
         )
+        
         db.add(prediction)
         db.commit()
         db.refresh(prediction)

@@ -60,22 +60,12 @@ docker network create front-back
 ![A3](<idef0-A3 Декомпозиция.drawio.png>)
 
 
-# Project tree
-```
 
-```
 ```
 risk-predictor
 ├─ .$idef0.xml.bkp
 ├─ .dockerignore
-├─ DELIVERY_SUMMARY.md
 ├─ DOCKER_GUIDE.md
-├─ IMPLEMENTATION_CHECKLIST.md
-├─ INDEX.md
-├─ LICENSE
-├─ MVP_GUIDE.md
-├─ PROJECT_SUMMARY.md
-├─ QUICK_START.md
 ├─ README.md
 ├─ backend
 │  ├─ __init__.py
@@ -87,53 +77,23 @@ risk-predictor
 │  │  └─ routes
 │  │     ├─ __init__.py
 │  │     ├─ health.py
-│  │     └─ predict.py
+│  │     ├─ operations.py
+│  │     ├─ patients.py
+│  │     └─ predictions.py
 │  ├─ db
 │  │  ├─ __init__.py
 │  │  ├─ models.py
 │  │  └─ session.py
 │  ├─ main.py
-│  ├─ ml
-│  │  ├─ __init__.py
-│  │  ├─ predict.py
-│  │  └─ train.py
 │  ├─ models
 │  │  ├─ __init__.py
 │  │  └─ schemas.py
 │  └─ services
 │     ├─ __init__.py
-│     └─ risk_predictor.py
+│     ├─ operation_service.py
+│     ├─ patient_service.py
+│     └─ prediction_service.py
 ├─ docker-compose.yml
-├─ docker-helper.sh
-├─ frontend
-│  ├─ README.md
-│  ├─ eslint.config.js
-│  ├─ index.html
-│  ├─ package-lock.json
-│  ├─ package.json
-│  ├─ public
-│  │  └─ vite.svg
-│  ├─ src
-│  │  ├─ App.css
-│  │  ├─ App.tsx
-│  │  ├─ api
-│  │  │  └─ client.ts
-│  │  ├─ api.ts
-│  │  ├─ assets
-│  │  │  └─ react.svg
-│  │  ├─ components
-│  │  │  ├─ PatientInfo.css
-│  │  │  ├─ PatientInfo.tsx
-│  │  │  ├─ PredictForm.css
-│  │  │  ├─ PredictForm.tsx
-│  │  │  ├─ PredictionHistory.css
-│  │  │  └─ PredictionHistory.tsx
-│  │  ├─ index.css
-│  │  └─ main.tsx
-│  ├─ tsconfig.app.json
-│  ├─ tsconfig.json
-│  ├─ tsconfig.node.json
-│  └─ vite.config.ts
 ├─ idef0-A-0 Контекстная диаграмма.drawio.png
 ├─ idef0-A0 Декомпозиция.drawio.png
 ├─ idef0-A3 Декомпозиция.drawio.png
@@ -143,15 +103,18 @@ risk-predictor
 │  │  ├─ backend.Dockerfile
 │  │  ├─ database.Dockerfile
 │  │  ├─ frontend.Dockerfile
-│  │  └─ init-db.sql
+│  │  ├─ init-db.sql
+│  │  └─ ml_service.Dockerfile
 │  ├─ nginx
+│  │  ├─ default.conf
 │  │  └─ nginx.conf
 │  └─ terraform
+├─ ml
+│  ├─ __init__.py
+│  ├─ ml_service.py
+│  ├─ models
+│  └─ test.py
 ├─ requirements.txt
-├─ setup.sh
-├─ start_backend.sh
-├─ start_frontend.sh
-├─ test_backend.py
-└─ Не подтверждено 378621.~
+└─ test_backend.py
 
 ```

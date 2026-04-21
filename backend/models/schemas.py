@@ -40,9 +40,6 @@ class OperationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-
-
-
 # Prediction Schemas
 class PredictionResponse(BaseModel):
     """Prediction response."""
@@ -76,11 +73,9 @@ class OperationInfo(BaseModel):
 
 
 class PredictRequest(BaseModel):
-    """Risk prediction request."""
-    patient: PatientInfo
-    operation: OperationInfo
-    features: Dict[str, Any] = Field(..., description="Features for prediction")
-
+    operation_id: int
+    features: Dict[str, Any]
+    model_version: Optional[str] = None
 
 class PredictResponse(BaseModel):
     """Risk prediction response."""
@@ -94,12 +89,39 @@ class PredictResponse(BaseModel):
 
 
 # Model Info Response
+class ModelVersionInfo(BaseModel):
+    """Info about specific model version."""
+    is_current: bool
+    features_count: int
+    framework: str
+    model_type: str
+    loaded_at: Optional[str] = None
+    file_size_mb: Optional[float] = None
+
+
+class ModelVersionResponse(BaseModel):
+    """Response schema for model versions list."""
+    current_version: str
+    versions: Dict[str, ModelVersionInfo]
+
+# В backend/models/schemas.py
+
 class ModelInfoResponse(BaseModel):
-    """ML Model information response."""
+    """Response schema for model information from ML service."""
     version: str
-    features: List[str]
+    is_current: Optional[bool] = None
+    framework: Optional[str] = None
+    model_type: Optional[str] = None
+    total_features: int
+    required_features: List[str]
+    categorical_features: Optional[List[str]] = []
+    loaded_at: Optional[str] = None
+    file_path: Optional[str] = None
 
-
+class SetVersionResponse(BaseModel):
+    """Response when setting current model version."""
+    version: str
+    required_features: List[str]
 # Health Check Response
 class HealthCheckResponse(BaseModel):
     """Health check response."""
