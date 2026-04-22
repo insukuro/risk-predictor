@@ -102,6 +102,41 @@ risk-predictor
 │     └─ prediction_service.py
 ├─ docker-compose.yml
 ├─ frontend
+│  ├─ index.html
+│  ├─ package-lock.json
+│  ├─ package.json
+│  ├─ src
+│  │  ├─ App.tsx
+│  │  ├─ components
+│  │  │  ├─ Header.tsx
+│  │  │  ├─ ModelInfoCard.tsx
+│  │  │  ├─ PatientDialog.tsx
+│  │  │  ├─ PredictiveForm.tsx
+│  │  │  ├─ ResultDisplay.tsx
+│  │  │  └─ ui
+│  │  │     ├─ Badge.tsx
+│  │  │     ├─ Button.tsx
+│  │  │     ├─ Card.tsx
+│  │  │     ├─ Dialog.tsx
+│  │  │     ├─ Input.tsx
+│  │  │     ├─ Select.tsx
+│  │  │     ├─ Skeleton.tsx
+│  │  │     ├─ Spinner.tsx
+│  │  │     └─ Switch.tsx
+│  │  ├─ hooks
+│  │  │  └─ useTaskPoller.ts
+│  │  ├─ index.css
+│  │  ├─ lib
+│  │  │  ├─ api.ts
+│  │  │  └─ utils.ts
+│  │  ├─ main.tsx
+│  │  ├─ types
+│  │  │  └─ index.ts
+│  │  ├─ utils
+│  │  │  └─ cn.ts
+│  │  └─ vite-env.d.ts
+│  ├─ tsconfig.json
+│  └─ vite.config.ts
 ├─ idef0-A-0 Контекстная диаграмма.drawio.png
 ├─ idef0-A0 Декомпозиция.drawio.png
 ├─ idef0-A3 Декомпозиция.drawio.png
@@ -113,15 +148,29 @@ risk-predictor
 │  │  ├─ frontend.Dockerfile
 │  │  ├─ init-db.sql
 │  │  └─ ml_service.Dockerfile
-│  ├─ nginx
-│  │  ├─ default.conf
-│  │  └─ nginx.conf
-│  └─ terraform
-├─ ml
+│  └─ nginx
+│     ├─ default.conf
+│     └─ nginx.conf
+├─ ml_service
 │  ├─ __init__.py
-│  ├─ ml_service.py
+│  ├─ config.py
+│  ├─ features
+│  │  ├─ __init__.py
+│  │  ├─ engineering.py
+│  │  └─ importance.py
+│  ├─ main.py
+│  ├─ model_versions
 │  ├─ models
-│  └─ test.py
+│  │  ├─ __init__.py
+│  │  ├─ loader.py
+│  │  ├─ predictor.py
+│  │  └─ registry.py
+│  ├─ schemas
+│  │  ├─ __init__.py
+│  │  └─ requests.py
+│  └─ utils
+│     ├─ __init__.py
+│     └─ helpers.py
 ├─ requirements.txt
 └─ test_backend.py
 
