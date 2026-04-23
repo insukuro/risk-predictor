@@ -61,6 +61,7 @@ docker network create front-back
 
 
 
+
 ```
 risk-predictor
 ├─ .$idef0.xml.bkp
@@ -100,7 +101,7 @@ risk-predictor
 │     ├─ operation_service.py
 │     ├─ patient_service.py
 │     └─ prediction_service.py
-├─ docker-compose.yml
+├─ docker-compose.risk-predictor.yml
 ├─ frontend
 │  ├─ index.html
 │  ├─ package-lock.json
@@ -160,6 +161,9 @@ risk-predictor
 │  │  └─ importance.py
 │  ├─ main.py
 │  ├─ model_versions
+│  │  ├─ model_v1.pkl
+│  │  ├─ model_v2.pkl
+│  │  └─ model_v3.pkl
 │  ├─ models
 │  │  ├─ __init__.py
 │  │  ├─ loader.py
@@ -171,7 +175,9 @@ risk-predictor
 │  └─ utils
 │     ├─ __init__.py
 │     └─ helpers.py
-├─ requirements.txt
-└─ test_backend.py
+└─ requirements
+   ├─ backend.txt
+   ├─ base.txt
+   └─ ml.txt
 
 ```

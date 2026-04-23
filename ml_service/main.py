@@ -4,9 +4,8 @@ from fastapi import FastAPI, HTTPException
 from ml_service.config import config
 from ml_service.models.registry import ModelRegistry
 from ml_service.schemas.requests import PredictRequest, SetVersionRequest
-from ml_service.utils import get_feature_importance, get_top_features, predict
-
-
+from ml_service.features.importance import get_feature_importance, get_top_features
+from ml_service.models.predictor import predict
 # Инициализация реестра моделей
 registry = ModelRegistry(config.MODELS_DIR)
 
