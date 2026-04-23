@@ -13,7 +13,6 @@ services:
       - .env
     environment:
       PGDATA: /var/lib/postgresql/data/pgdata
-      # ВАЖНО: используем ${VAR} для подстановки
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -75,21 +74,16 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@risk-db:5432/${POSTGRES_DB}
       ML_SERVICE_URL: http://risk-ml:8001
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 10s
-    command: >
-      sh -c "
-      echo 'Waiting for database...' &&
-      sleep 5 &&
-      echo 'Running Alembic migrations...' &&
-      alembic upgrade head &&
-      echo 'Starting FastAPI...' &&
-      python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 4
-      "
+      retries: 5
+      start_period: 30s
 
   # Frontend
   risk-frontend:
@@ -109,3 +103,5 @@ services:
     depends_on:
       risk-backend:
         condition: service_healthy
+    ports:
+      - "80:80"  # Для отладки

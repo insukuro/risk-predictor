@@ -9,10 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Копируем ВСЮ папку requirements
+# Copy requirements
 COPY requirements/ ./requirements/
 
-# Устанавливаем зависимости
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements/backend.txt
 
 # Runtime stage
@@ -26,9 +26,10 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install runtime dependencies only
+# Install runtime dependencies including curl for healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python packages from builder
@@ -38,15 +39,39 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application code
 COPY . .
 
-# Copy alembic files
-COPY alembic.ini .
-COPY alembic/ ./alembic/
-
-# Create entrypoint script
+# Create entrypoint script with proper error handling
 RUN echo '#!/bin/bash\n\
 set -e\n\
+\n\
+echo "========================================="\n\
+echo "Starting Risk Predictor Backend"\n\
+echo "========================================="\n\
+echo "Environment: $ENVIRONMENT"\n\
+echo "Database URL: ${DATABASE_URL//:([^:@]+)@/:****@}"\n\
+echo "ML Service URL: $ML_SERVICE_URL"\n\
+echo "========================================="\n\
+\n\
+echo "Waiting for database to be ready..."\n\
+for i in {1..30}; do\n\
+    if pg_isready -h risk-db -U ${POSTGRES_USER} -d ${POSTGRES_DB} -t 1 > /dev/null 2>&1; then\n\
+        echo "✅ Database is ready!"\n\
+        break\n\
+    fi\n\
+    echo "⏳ Waiting for database... ($i/30)"\n\
+    sleep 2\n\
+done\n\
+\n\
 echo "Running Alembic migrations..."\n\
-alembic upgrade head\n\
+if alembic upgrade head; then\n\
+    echo "✅ Migrations completed successfully"\n\
+else\n\
+    echo "❌ Migration failed!"\n\
+    exit 1\n\
+fi\n\
+\n\
+echo "Current Alembic version:"\n\
+alembic current\n\
+\n\
 echo "Starting FastAPI application..."\n\
 exec uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 4\n\
 ' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
@@ -56,9 +81,10 @@ RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app
 USER appuser
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
+# Healthcheck using curl
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=5 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
 EXPOSE 8000
 
-CMD ["/app/entrypoint.sh"]
+ENTRYPOINT ["/app/entrypoint.sh"]
