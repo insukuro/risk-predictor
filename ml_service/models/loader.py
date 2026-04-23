@@ -4,6 +4,7 @@ from datetime import datetime
 import joblib
 from typing import Dict
 
+
 def detect_framework(model) -> str:
     """Автоматически определяет фреймворк модели."""
     model_type = type(model).__name__

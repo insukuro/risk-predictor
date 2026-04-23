@@ -1,11 +1,11 @@
 """ML Microservice - Main Application."""
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
-from config import config
-from models.registry import ModelRegistry
-from models.predictor import predict
-from schemas.requests import PredictRequest, SetVersionRequest
-from features.importance import get_feature_importance, get_top_features
+from ml_service.config import config
+from ml_service.models.registry import ModelRegistry
+from ml_service.schemas.requests import PredictRequest, SetVersionRequest
+from ml_service.utils import get_feature_importance, get_top_features, predict
+
 
 # Инициализация реестра моделей
 registry = ModelRegistry(config.MODELS_DIR)

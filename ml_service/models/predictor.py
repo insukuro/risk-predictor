@@ -2,7 +2,7 @@
 import numpy as np
 from typing import Dict, Any
 from features.engineering import prepare_features
-from utils.helpers import normalize_risk_score, get_risk_level
+from ml_service.utils.helpers import normalize_risk_score, get_risk_level
 
 def predict(model_package: Dict, features: Dict[str, Any]) -> Dict[str, Any]:
     """Выполняет предсказание."""

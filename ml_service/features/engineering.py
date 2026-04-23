@@ -2,8 +2,8 @@
 from typing import Dict, Any
 import pandas as pd
 import numpy as np
-from utils.helpers import get_default_value
-from features.importance import get_top_features
+from ml_service.utils.helpers import get_default_value
+from ml_service.features.importance import get_top_features
 
 def prepare_features(package: Dict, features_dict: Dict[str, Any]) -> pd.DataFrame:
     """Подготовка признаков для инференса."""

@@ -2,7 +2,8 @@
 from typing import Dict, Optional, Tuple
 from pathlib import Path
 from fastapi import HTTPException
-from models.loader import load_model_from_file
+from ml_service.models.loader import load_model_from_file
+
 
 class ModelRegistry:
     """Хранилище всех версий моделей."""
