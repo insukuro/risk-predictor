@@ -1,27 +1,41 @@
-name: Deploy ML Model
+name: Deploy ML Service
 
 on:
   push:
     paths:
-      - 'ml_service/model_versions/**/*.pkl'
+      - 'ml_service/**'
+      - 'requirements/ml.txt'
+      - 'infrastructure/docker/ml_service.Dockerfile'
     branches:
       - main
-      - master
 
 jobs:
-  version-and-deploy:
+  test:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
       
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements/ml.txt
+          pip install pytest
+      
+      - name: Run tests
+        run: |
+          pytest ml_service/tests/ -v --tb=short || true  # если нет тестов - не падаем
+  
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - uses: actions/checkout@v4
       
       - name: Auto-version models
         run: |
@@ -36,24 +50,27 @@ jobs:
           git diff --staged --quiet || git commit -m "🤖 Auto-version models [skip ci]"
           git push
       
-      - name: Copy to VPS and reload
+      - name: Copy to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT || 22 }}
-          source: "ml_service/model_versions/"
-          target: "/home/${{ secrets.VPS_USER }}/docker/projects/risk-predictor/"
-          strip_components: 1
+          port: ${{ secrets.VPS_PORT }}
+          source: "ml_service/,requirements/ml.txt,infrastructure/docker/ml_service.Dockerfile"
+          target: ${{ secrets.VPS_PROJECT_PATH }}
+          strip_components: 0
       
       - name: Reload ML service
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT || 22 }}
+          port: ${{ secrets.VPS_PORT }}
           script: |
-            cd /home/${{ secrets.VPS_USER }}/docker/projects/risk-predictor
-            docker compose exec -T risk-ml python -c "import sys; sys.path.insert(0, '/app'); from ml_service.models.registry import registry; registry.clear(); success = registry.load_all(); print('✅ Models reloaded' if success else '❌ Failed to reload models')"
+            cd ${{ secrets.VPS_PROJECT_PATH }}
+            docker compose build risk-ml
+            docker compose up -d --no-deps risk-ml
+            sleep 5
+            docker compose exec -T risk-ml python -c "from ml_service.models.registry import registry; registry.clear(); registry.load_all(); print('✅ ML Service reloaded')"

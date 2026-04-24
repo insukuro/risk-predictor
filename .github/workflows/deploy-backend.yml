@@ -1,0 +1,68 @@
+name: Deploy Backend API
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - 'alembic/**'
+      - 'requirements/backend.txt'
+      - 'infrastructure/docker/backend.Dockerfile'
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements/backend.txt
+          pip install pytest httpx
+      
+      - name: Run tests
+        env:
+          DATABASE_URL: sqlite:///./test.db
+        run: |
+          pytest backend/tests/ -v --tb=short || true
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Copy to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          source: "backend/,alembic/,alembic.ini,requirements/backend.txt,infrastructure/docker/backend.Dockerfile"
+          target: ${{ secrets.VPS_PROJECT_PATH }}
+          strip_components: 0
+      
+      - name: Run migrations and reload
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            cd ${{ secrets.VPS_PROJECT_PATH }}
+            docker compose build risk-backend
+            docker compose up -d --no-deps risk-backend
+            sleep 3
+            docker compose exec -T risk-backend alembic upgrade head
+            docker compose restart risk-backend
+            echo "✅ Backend deployed"

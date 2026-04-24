@@ -21,7 +21,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// ─── Inner App ────────────────────────────────────────────────────────────────
+// ─── Inner App 
 
 function AppInner() {
   const [selectedVersion, setSelectedVersion] = useState<string>('');
@@ -54,7 +54,7 @@ function AppInner() {
   const activeConfig = selectedVersion ? versionedConfig : config;
   const isConfigLoading = configLoading || (!!selectedVersion && versionedLoading);
 
-  // ── Predict Mutation ─────────────────────────────────────────────────────
+  // ── Predict Mutation 
 
   const predictMutation = useMutation({
     mutationFn: predict,
