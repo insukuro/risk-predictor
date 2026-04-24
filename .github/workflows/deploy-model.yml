@@ -1,0 +1,59 @@
+name: Deploy ML Model
+
+on:
+  push:
+    paths:
+      - 'ml_service/model_versions/**/*.pkl'
+    branches:
+      - main
+      - master
+
+jobs:
+  version-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Auto-version models
+        run: |
+          chmod +x scripts/auto-version-models.sh
+          ./scripts/auto-version-models.sh
+      
+      - name: Commit versioned models
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add ml_service/model_versions/
+          git diff --staged --quiet || git commit -m "🤖 Auto-version models [skip ci]"
+          git push
+      
+      - name: Copy to VPS and reload
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          source: "ml_service/model_versions/"
+          target: "/home/${{ secrets.VPS_USER }}/docker/projects/risk-predictor/"
+          strip_components: 1
+      
+      - name: Reload ML service
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            cd /home/${{ secrets.VPS_USER }}/docker/projects/risk-predictor
+            docker compose exec -T risk-ml python -c "import sys; sys.path.insert(0, '/app'); from ml_service.models.registry import registry; registry.clear(); success = registry.load_all(); print('✅ Models reloaded' if success else '❌ Failed to reload models')"
