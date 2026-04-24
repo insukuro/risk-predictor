@@ -25,6 +25,7 @@ venv.bak/
 dist/
 build/
 
+
 # Frontend
 node_modules/
 
@@ -53,7 +54,6 @@ alembic/versions/__pycache__/
 *.sqlite3
 
 # Docker
-*.dockerignore
-
+docker-compose.override.yml
 # IGNORED FILES 
 *.ignore

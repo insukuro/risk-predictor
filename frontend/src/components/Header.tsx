@@ -26,7 +26,7 @@ export function Header({ config, selectedVersion, onVersionChange, isLoading }: 
             </div>
             <div className="flex flex-col leading-none">
               <span className="text-sm font-bold text-slate-900 tracking-tight">Risk Predictor</span>
-              <span className="text-xs text-slate-400">Medical AI</span>
+              <span className="text-xs text-slate-400">ML - powered Risk Assistment</span>
             </div>
           </div>
 
