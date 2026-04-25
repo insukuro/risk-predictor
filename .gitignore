@@ -57,5 +57,3 @@ alembic/versions/__pycache__/
 docker-compose.override.yml
 # IGNORED FILES 
 *.ignore
-
-ml_service/model_versions/latest.pkl
