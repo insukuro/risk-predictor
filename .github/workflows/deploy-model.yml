@@ -46,9 +46,10 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
+          git pull --rebase origin main || echo "No rebase needed"
           git add ml_service/model_versions/
           git diff --staged --quiet || git commit -m "🤖 Auto-version models [skip ci]"
-          git push
+          git push origin main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
