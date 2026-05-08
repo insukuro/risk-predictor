@@ -35,7 +35,6 @@ async def get_model_config(version: Optional[str] = Query(None)):
     """Собирает конфиг для фронтенда."""
     # 1. Получаем список версий
     versions_data = await request_ml("/models/versions")
-    # Так как ML-сервис возвращает словарь в ключе "versions", извлекаем ключи
     v_dict = versions_data.get("versions", {})
     v_list = list(v_dict.keys())
     
@@ -43,13 +42,28 @@ async def get_model_config(version: Optional[str] = Query(None)):
     
     # 2. Получаем инфо по конкретной версии
     model_info = await request_ml(f"/model/info?version={current_v}")
+    # 3. Пробуем получить демо-данные (не падаем если их нет)
+    demo_input = None
+    demo_result = None
+    try:
+        demo_data = await request_ml(f"/model/demo?version={current_v}")
+        if demo_data.get("demo_available"):
+            demo_input = demo_data.get("demo_input_features")
+            demo_result = demo_data.get("demo_prediction")
+    except Exception:
+        pass
     
     return {
         "available_versions": v_list,
         "current_version": current_v,
         "features": model_info.get("required_features", []),
-        "top_features": model_info.get("required_features", []), # У тебя это одно и то же
-        "categorical_features": model_info.get("categorical_features", [])
+        "top_features": model_info.get("required_features", []),
+        "categorical_features": model_info.get("categorical_features", []),
+        "demo": {
+            "available": demo_input is not None,
+            "input": demo_input,
+            "result": demo_result
+        }
     }
 
 @router.post("/predict")

@@ -19,11 +19,11 @@ async def lifespan(app: FastAPI):
 # Создание FastAPI приложения
 app = FastAPI(
     title="ML Service",
-    version="1.4.0",
+    version="1.5.0",
     lifespan=lifespan
 )
 
-# ============ Health & Info Endpoints ============
+#Health & Info Endpoints
 
 @app.get("/health")
 async def health():
@@ -75,8 +75,44 @@ async def model_info(version: str = None):
         "file_path": package.get('_file_path')
     }
 
-# ============ Prediction Endpoints ============
+@app.get("/model/demo")
+async def get_demo_data(version: str = None):
+    """
+    Получить демо-данные текущей модели (или указанной версии).
+    Возвращает пример признаков и результат предсказания на них.
+    """
+    if not registry.models:
+        raise HTTPException(status_code=503, detail="No models loaded")
+    
+    try:
+        package, actual_version = registry.get_package(version)
+        
+        # Проверяем, есть ли демо-данные в модели
+        demo_data = package.get('demo_data')
+        
+        if demo_data is None:
+            return {
+                "version": actual_version,
+                "demo_available": False,
+                "message": "Demo data not embedded in this model. Use /model/info to see required features."
+            }
+        
+        # Запускаем предсказание на демо-данных
+        prediction = predict(package, demo_data)
+        
+        return {
+            "version": actual_version,
+            "demo_available": True,
+            "demo_input_features": demo_data,
+            "demo_prediction": prediction
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Demo error: {str(e)}")
 
+#Prediction Endpoints 
 @app.post("/predict")
 async def predict_endpoint(request: PredictRequest):
     """Выполнить предсказание."""

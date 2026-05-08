@@ -59,6 +59,8 @@ def load_model_from_file(file_path: Path) -> tuple:
         
         print(f"   ✅ Loaded: {len(package['feature_names'])} features")
         print(f"   🔧 Framework: {package['framework']}")
+        if 'demo_data' in package:
+            print(f"   🎯 Demo data: {len(package['demo_data'])} features")
         
         return version, package
         
