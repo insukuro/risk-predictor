@@ -119,6 +119,60 @@ async def process_and_save(task_id: str):
     finally:
         db.close()
 
+@router.get("")
+async def list_predictions(
+    patient_id: Optional[int] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """Вывести все предсказания и связанных с ней пациентов."""
+    from sqlalchemy.orm import joinedload
+    from backend.db.models import Operation, Patient, ClinicalData
+
+    query = db.query(Prediction).options(
+        joinedload(Prediction.operation).joinedload(Operation.patient),
+        joinedload(Prediction.operation).joinedload(Operation.clinical_data),
+    )
+
+    if patient_id:
+        query = query.join(Operation).filter(
+            Operation.patient_id == patient_id
+        )
+
+    predictions = query.order_by(
+        Prediction.created_at.desc()
+    ).offset(skip).limit(limit).all()
+
+    result = []
+    for pred in predictions:
+        # Берём features из clinical_data (если они вообще есть)
+        features = {}
+        if pred.operation and pred.operation.clinical_data:
+            for cd in pred.operation.clinical_data:
+                if cd.features:
+                    features.update(cd.features)
+
+        result.append({
+            "id": pred.id,
+            "risk_score": pred.risk_score,
+            "risk_level": pred.risk_level,
+            "created_at": pred.created_at.isoformat() if pred.created_at else None,
+            "model_version": pred.model_version,
+            "operation": {
+                "type": pred.operation.type,
+                "date": pred.operation.date.isoformat() if pred.operation.date else None,
+            } if pred.operation else None,
+            "patient": {
+                "id": pred.operation.patient.id,
+                "sex": pred.operation.patient.sex,
+                "birth_date": pred.operation.patient.birth_date.isoformat() if pred.operation.patient.birth_date else None,
+            } if pred.operation and pred.operation.patient else None,
+            "features": features,
+        })
+
+    return result
+
 @router.get("/status/{task_id}")
 async def get_status(task_id: str):
     task = async_predictions.get(task_id)
