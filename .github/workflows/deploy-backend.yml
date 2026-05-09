@@ -1,5 +1,9 @@
 name: Deploy Backend API
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 on:
   push:
     paths:
@@ -9,7 +13,6 @@ on:
       - 'infrastructure/docker/backend.Dockerfile'
     branches:
       - main
-
 jobs:
   
   deploy:
@@ -31,7 +34,7 @@ jobs:
           target: ${{ secrets.VPS_PROJECT_PATH }}
           strip_components: 0
       
-      - name: Run migrations and reload
+      - name: Reload backend
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -42,7 +45,4 @@ jobs:
             cd ${{ secrets.VPS_PROJECT_PATH }}
             docker compose build risk-backend
             docker compose up -d --no-deps risk-backend
-            sleep 3
-            docker compose exec -T risk-backend alembic upgrade head
-            docker compose restart risk-backend
             echo "✅ Backend deployed"

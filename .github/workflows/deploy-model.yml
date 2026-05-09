@@ -1,5 +1,9 @@
 name: Deploy ML Service
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 on:
   push:
     paths:
@@ -8,7 +12,7 @@ on:
       - 'infrastructure/docker/ml_service.Dockerfile'
     branches:
       - main
-
+      
 jobs:
 
   deploy:
@@ -25,6 +29,8 @@ jobs:
           ./scripts/auto-version-models.sh
       
       - name: Commit versioned models
+        if: |
+          !contains(github.event.head_commit.message, '[skip ci]')
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
