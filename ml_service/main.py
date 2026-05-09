@@ -112,6 +112,7 @@ async def get_demo_data(version: str = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Demo error: {str(e)}")
 
+
 #Prediction Endpoints 
 @app.post("/predict")
 async def predict_endpoint(request: PredictRequest):
