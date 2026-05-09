@@ -1,5 +1,3 @@
-// ─── Model & Config ─────────────────────────────────────────────────────────
-
 export interface ModelVersionInfo {
   is_current: boolean;
   features_count: number;
@@ -17,8 +15,6 @@ export interface ModelConfig {
   categorical_features: string[];
 }
 
-// ─── Patient ─────────────────────────────────────────────────────────────────
-
 export interface PatientCreate {
   sex: string;
   birth_date: string; // ISO date string "YYYY-MM-DD"
@@ -30,8 +26,6 @@ export interface PatientResponse {
   birth_date: string;
   created_at: string;
 }
-
-// ─── Operation ───────────────────────────────────────────────────────────────
 
 export interface OperationCreate {
   patient_id: number;
@@ -46,8 +40,6 @@ export interface OperationResponse {
   date: string;
   created_at: string;
 }
-
-// ─── Prediction ───────────────────────────────────────────────────────────────
 
 export interface PredictRequest {
   features: Record<string, unknown>;
@@ -87,7 +79,18 @@ export interface TaskStatus {
   error?: string;
 }
 
-// ─── UI State ────────────────────────────────────────────────────────────────
+export interface PredictionRecord {
+  id: number;
+  risk_score: number;
+  risk_level: RiskLevel;
+  created_at: string;
+  operation: {
+    type: string;
+    date: string;
+  };
+  features: Record<string, unknown>;
+  patient?: PatientResponse;
+}
 
 export type RiskLevel = 'low' | 'medium' | 'high';
 

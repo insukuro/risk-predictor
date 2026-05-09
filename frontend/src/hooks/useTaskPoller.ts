@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { fetchTaskStatus } from '@/lib/api';
-import type { TaskStatus, PredictionResult } from '@/types';
+import { fetchTaskStatus } from '../lib/api';
+import type { PredictionResult } from '../types';
 
 interface UseTaskPollerOptions {
   taskId: string | null;
@@ -12,6 +12,11 @@ interface UseTaskPollerOptions {
 export function useTaskPoller({ taskId, onComplete, onError, interval = 1500 }: UseTaskPollerOptions) {
   const [isPolling, setIsPolling] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Храним колбэки в ref, чтобы избежать пересоздания интервала
+  const onCompleteRef = useRef(onComplete);
+  const onErrorRef = useRef(onError);
+  onCompleteRef.current = onComplete;
+  onErrorRef.current = onError;
 
   useEffect(() => {
     if (!taskId) {
@@ -23,12 +28,12 @@ export function useTaskPoller({ taskId, onComplete, onError, interval = 1500 }: 
 
     const poll = async () => {
       try {
-        const status: TaskStatus = await fetchTaskStatus(taskId);
+        const status = await fetchTaskStatus(taskId);
 
         if (status.status === 'completed' && status.result) {
           setIsPolling(false);
           if (timerRef.current) clearInterval(timerRef.current);
-          onComplete({
+          onCompleteRef.current({
             risk_score: status.result.risk_score,
             risk_level: status.result.risk_level,
             version: status.result.version,
@@ -37,23 +42,23 @@ export function useTaskPoller({ taskId, onComplete, onError, interval = 1500 }: 
         } else if (status.status === 'failed') {
           setIsPolling(false);
           if (timerRef.current) clearInterval(timerRef.current);
-          onError(status.error ?? 'Задача завершилась с ошибкой');
+          onErrorRef.current(status.error ?? 'Задача завершилась с ошибкой');
         }
-      } catch (e) {
+      } catch {
         setIsPolling(false);
         if (timerRef.current) clearInterval(timerRef.current);
-        onError('Ошибка опроса статуса задачи');
+        onErrorRef.current('Ошибка опроса статуса задачи');
       }
     };
 
-    // Poll immediately, then on interval
+    // Первый запрос сразу, потом через интервал
     poll();
     timerRef.current = setInterval(poll, interval);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [taskId]);
+  }, [taskId, interval]);
 
   return { isPolling };
 }

@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import type { RiskLevel } from '@/types';
+import type { RiskLevel } from '../types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -84,14 +84,14 @@ export function getDefaultFeatureValue(featureName: string): number | string {
 export function isCategoricalBoolean(featureName: string): boolean {
   const f = featureName.toLowerCase();
   return (
-    f.includes('0/1') ||
-    f.includes('наличие') ||
-    f.includes('гипертония') ||
-    f.includes('диабет') ||
-    f.includes('курение') ||
-    f.includes('ожирение') ||
-    f.includes('инфаркт') ||
-    f.includes('инсульт') ||
-    f.includes('фибрилляция')
+      f.includes('0/1') ||
+      f.includes('наличие') ||
+      f.includes('гипертония') ||
+      f.includes('диабет') ||
+      f.includes('курение') ||
+      f.includes('ожирение') ||
+      f.includes('инфаркт') ||
+      f.includes('инсульт') ||
+      f.includes('фибрилляция')
   );
 }

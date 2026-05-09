@@ -21,6 +21,7 @@ COPY . .
 
 # Копируем entrypoint и даем права
 COPY infrastructure/docker/entrypoint.sh /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Настройка PYTHONPATH важна для твоего env.py

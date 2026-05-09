@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
 
 interface BadgeProps {
   children: React.ReactNode;
@@ -8,13 +8,13 @@ interface BadgeProps {
 
 export function Badge({ children, className, variant = 'default' }: BadgeProps) {
   return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-        variant === 'outline' && 'border',
-        className,
-      )}
-    >
+      <span
+          className={cn(
+              'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+              variant === 'outline' && 'border',
+              className,
+          )}
+      >
       {children}
     </span>
   );

@@ -8,7 +8,8 @@ import type {
   PredictRequest,
   PredictResponse,
   TaskStatus,
-} from '@/types';
+  PredictionRecord,
+} from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
@@ -18,15 +19,11 @@ export const api = axios.create({
   timeout: 30_000,
 });
 
-// ─── Config ──────────────────────────────────────────────────────────────────
-
 export const fetchModelConfig = async (version?: string): Promise<ModelConfig> => {
   const params = version ? { version } : {};
   const { data } = await api.get<ModelConfig>('/predictions/config', { params });
   return data;
 };
-
-// ─── Predictions ─────────────────────────────────────────────────────────────
 
 export const predict = async (req: PredictRequest): Promise<PredictResponse> => {
   const { data } = await api.post<PredictResponse>('/predictions/predict', req);
@@ -38,8 +35,6 @@ export const fetchTaskStatus = async (taskId: string): Promise<TaskStatus> => {
   return data;
 };
 
-// ─── Patients ────────────────────────────────────────────────────────────────
-
 export const createPatient = async (patient: PatientCreate): Promise<PatientResponse> => {
   const { data } = await api.post<PatientResponse>('/patients', patient);
   return data;
@@ -50,9 +45,18 @@ export const fetchPatient = async (id: number): Promise<PatientResponse> => {
   return data;
 };
 
-// ─── Operations ──────────────────────────────────────────────────────────────
-
 export const createOperation = async (operation: OperationCreate): Promise<OperationResponse> => {
   const { data } = await api.post<OperationResponse>('/operations', operation);
+  return data;
+};
+
+export const fetchPredictions = async (patientId?: number): Promise<PredictionRecord[]> => {
+  const params = patientId ? { patient_id: patientId } : {};
+  const { data } = await api.get<PredictionRecord[]>('/predictions', { params });
+  return data;
+};
+
+export const fetchPredictionById = async (id: number): Promise<PredictionRecord> => {
+  const { data } = await api.get<PredictionRecord>(`/predictions/${id}`);
   return data;
 };
