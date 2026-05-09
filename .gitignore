@@ -52,8 +52,10 @@ alembic/versions/__pycache__/
 *.db
 *.sqlite
 *.sqlite3
+pgdata/
 
 # Docker
 docker-compose.override.yml
+
 # IGNORED FILES 
 *.ignore
