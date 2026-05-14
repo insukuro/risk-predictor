@@ -56,7 +56,7 @@ if __name__ == "__main__":
     
     host = os.getenv("API_HOST", "0.0.0.0")
     port = int(os.getenv("API_PORT", "8000"))
-    workers = int(os.getenv("API_WORKERS", "2"))
+    workers = int(os.getenv("API_WORKERS", "1"))
     
     uvicorn.run(
         "backend.main:app",
