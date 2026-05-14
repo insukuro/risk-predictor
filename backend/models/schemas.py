@@ -36,7 +36,7 @@ class PatientResponse(BaseModel):
     sex: str
     birth_date: date
     created_at: datetime
-    age: Optional[int] = None  # Computed field
+    age: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -249,11 +249,6 @@ class HealthCheckResponse(BaseModel):
         populate_by_name=True,
         protected_namespaces=()
     )
-
-
-# =====================
-# Update forward references
-# =====================
 
 PatientWithOperations.model_rebuild()
 OperationWithPrediction.model_rebuild()

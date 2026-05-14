@@ -1,3 +1,5 @@
+version: '3.8'
+
 networks:
   docker_web-network:
     external: true
@@ -20,12 +22,27 @@ services:
     networks:
       - docker_web-network
     restart: always
-    # ДОБАВЛЕНО: Проверка здоровья базы
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # Clinical Calculator Service (НОВЫЙ)
+  risk-calc:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/calc_service.Dockerfile
+    container_name: risk-predictor-calc
+    env_file: .env
+    networks:
+      - docker_web-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   # ML Service
   risk-ml:
@@ -39,7 +56,6 @@ services:
     networks:
       - docker_web-network
     restart: always
-    # ДОБАВЛЕНО: Проверка здоровья ML сервиса
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 10s
@@ -56,13 +72,15 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@risk-db:5432/${POSTGRES_DB}
       ML_SERVICE_URL: http://risk-ml:8001
-      # Передаем переменные для скрипта ожидания базы
+      CALC_SERVICE_URL: http://risk-calc:8005
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_DB: ${POSTGRES_DB}
     depends_on:
       risk-db:
         condition: service_healthy
       risk-ml:
+        condition: service_healthy
+      risk-calc:
         condition: service_healthy
     networks:
       - docker_web-network
@@ -82,7 +100,6 @@ services:
       VIRTUAL_PORT: 80
       LETSENCRYPT_HOST: cabg.insukuro.ru
       LETSENCRYPT_EMAIL: tukhtarovilkhom@gmail.com
-      # Добавьте эти переменные для runtime
       VITE_API_URL: /api
       VITE_API_BASE_URL: /api
     networks:
