@@ -131,7 +131,21 @@ class ClinicalEngine:
         return score
 
 # --- ЭНДПОИНТЫ ---
-
+@app.get("/metadata")
+async def get_metadata():
+    """Возвращает список ключей, которые сервис рассчитывает самостоятельно."""
+    return {
+        "calculated_features": [
+            "EuroSCORE II (%)",
+            "Индекс коморбидности Чарлсона",
+            "Индекс Чарлсона",
+            "ИМТ (кг/м²)",
+            "СКФ (мл/мин)",
+            "CHA₂DS₂-VASc",
+            "HAS-BLED"
+        ]
+    }
+    
 @app.post("/calculate/euroscore")
 async def get_euroscore(data: PatientData):
     prep = ClinicalEngine.get_preprocessed_values(data)
@@ -172,6 +186,7 @@ async def calculate_all_metrics(data: PatientData):
             "status": "success",
             "EuroSCORE II (%)": euroscore,
             "Индекс коморбидности Чарлсона": cci,
+            "Индекс Чарлсона": cci,
             "ИМТ (кг/м²)": prep["bmi"],
             "СКФ (мл/мин)": round(prep["cl_cr"], 1),
             "CHA₂DS₂-VASc": chads,

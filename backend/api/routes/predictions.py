@@ -9,82 +9,107 @@ import os
 from backend.db.session import get_db, SessionLocal
 from backend.db.models import Prediction, ClinicalData
 from backend.models.schemas import PredictRequest, PredictionResponse
+from backend.services.prediction_service import PredictionService
 
 router = APIRouter(prefix="/predictions", tags=["predictions"])
 
 ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://localhost:8001")
+CALC_SERVICE_URL = os.getenv("CALC_SERVICE_URL", "http://localhost:8005")
 
 async_predictions: Dict[str, Dict[str, Any]] = {}
 
+async def request_calc(features: Dict[str, Any]):
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            # Отправляем сырые фичи, получаем объект с посчитанными метриками
+            response = await client.post(f"{CALC_SERVICE_URL}/calculate/all", json=features)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            print(f"Calc Service Error: {e}")
+            # Если калькулятор упал, можно либо пробросить ошибку, 
+            raise HTTPException(status_code=502, detail="Calculator service unavailable")
+        
+        
 async def request_ml(path: str, method: str = "GET", data: Any = None):
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             if method == "POST":
-                # ВАЖНО: передаем в ML сервис ключ "version", как он просит
                 response = await client.post(f"{ML_SERVICE_URL}{path}", json=data)
             else:
                 response = await client.get(f"{ML_SERVICE_URL}{path}")
-            response.raise_for_status()
+            
+            # Если ML вернул 400 или 500, мы хотим видеть ПОЧЕМУ
+            if response.status_code != 200:
+                print(f"ML Service Detail: {response.text}")
+                raise HTTPException(status_code=response.status_code, detail=f"ML Error: {response.text}")
+                
             return response.json()
+        except httpx.ConnectError:
+            raise HTTPException(status_code=502, detail="Could not connect to ML Service")
         except Exception as e:
-            print(f"ML Service Error: {e}")
-            raise HTTPException(status_code=502, detail="ML Service unavailable")
-
+            raise HTTPException(status_code=500, detail=str(e))
+        
+        
 @router.get("/config")
 async def get_model_config(version: Optional[str] = Query(None)):
-    """Собирает конфиг для фронтенда."""
-    # 1. Получаем список версий
+    # 1. Получаем инфо от ML
     versions_data = await request_ml("/models/versions")
-    v_dict = versions_data.get("versions", {})
-    v_list = list(v_dict.keys())
-    
     current_v = version or versions_data.get("current_version", "v1")
-    
-    # 2. Получаем инфо по конкретной версии
     model_info = await request_ml(f"/model/info?version={current_v}")
-    # 3. Пробуем получить демо-данные (не падаем если их нет)
-    demo_input = None
-    demo_result = None
-    try:
-        demo_data = await request_ml(f"/model/demo?version={current_v}")
-        if demo_data.get("demo_available"):
-            demo_input = demo_data.get("demo_input_features")
-            demo_result = demo_data.get("demo_prediction")
-    except Exception:
-        pass
     
+    all_required = model_info.get("required_features", [])
+    
+    # 2. Получаем список того, что считает калькулятор
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            calc_resp = await client.get(f"{CALC_SERVICE_URL}/metadata")
+            calculated_features = calc_resp.json().get("calculated_features", [])
+    except Exception:
+        calculated_features = []
+
+    # 3. ФИЛЬТРАЦИЯ: Оставляем только те поля, которые НЕ считаются автоматически
+    # Это и будет списком полей для отрисовки на фронте
+    ui_features = [f for f in all_required if f not in calculated_features]
+
     return {
-        "available_versions": v_list,
+        "available_versions": list(versions_data.get("versions", {}).keys()),
         "current_version": current_v,
-        "features": model_info.get("required_features", []),
-        "top_features": model_info.get("required_features", []),
-        "categorical_features": model_info.get("categorical_features", []),
+        "features": ui_features, # Фронт рисует только "сырые" данные
+        "categorical_features": [f for f in model_info.get("categorical_features", []) if f in ui_features],
         "demo": {
-            "available": demo_input is not None,
-            "input": demo_input,
-            "result": demo_result
+            "available": False # Демо лучше отключить или фильтровать аналогично
         }
     }
 
 @router.post("/predict")
 async def predict(request: PredictRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    # Подготовка данных для ML (согласно его схеме PredictRequest)
+    # 1. Вызываем калькулятор. 
+    # Так как в PatientData стоит populate_by_name=True, 
+    # он примет dict, где ключи совпадают с алиасами (например, "Возраст (лет)")
+    calc_results = await request_calc(request.features)
+    
+    # 2. Формируем полный пакет (Сырые данные + Расчетные метрики)
+    # Важно: расчетные значения из calc_results перекроют сырые, если вдруг будет дубль
+    full_features = {**request.features, **calc_results}
+    full_features.pop("status", None) # убираем служебное поле "success"
+
     ml_request_data = {
-        "features": request.features,
-        "version": request.model_version  # Фронт шлет model_version -> ML ждет version
+        "features": full_features,
+        "version": request.model_version
     }
 
-    # Режим БЕЗ сохранения в БД
     if not request.operation_id:
+        # Режим без сохранения (превью)
         result = await request_ml("/predict", "POST", ml_request_data)
         return {"status": "completed", "saved": False, "result": result}
 
-    # Режим С сохранением (асинхронно)
+    # Режим с сохранением (фоновая задача)
     task_id = str(uuid.uuid4())
     async_predictions[task_id] = {
         "status": "pending",
         "operation_id": request.operation_id,
-        "features": request.features,
+        "features": full_features, # В БД сохраняем полный набор данных
         "version": request.model_version
     }
     background_tasks.add_task(process_and_save, task_id)
