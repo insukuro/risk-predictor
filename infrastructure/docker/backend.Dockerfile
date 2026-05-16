@@ -13,7 +13,11 @@ WORKDIR /app
 
 # Устанавливаем только нужные runtime-зависимости
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    postgresql-client curl libpq5 && rm -rf /var/lib/apt/lists/*
+    postgresql-client-common \
+    postgresql-client \
+    curl \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Копируем зависимости из builder
 COPY --from=builder /install /usr/local

@@ -21,17 +21,17 @@ export const api = axios.create({
 
 export const fetchModelConfig = async (version?: string): Promise<ModelConfig> => {
   const params = version ? { version } : {};
-  const { data } = await api.get<ModelConfig>('/predictions/config', { params });
+  const { data } = await api.get<ModelConfig>('/predictions/ui/schema', { params });
   return data;
 };
 
 export const predict = async (req: PredictRequest): Promise<PredictResponse> => {
-  const { data } = await api.post<PredictResponse>('/predictions/predict', req);
+  const { data } = await api.post<PredictResponse>('/predictions/ui/predict', req);
   return data;
 };
 
 export const fetchTaskStatus = async (taskId: string): Promise<TaskStatus> => {
-  const { data } = await api.get<TaskStatus>(`/predictions/status/${taskId}`);
+  const { data } = await api.get<TaskStatus>(`/predictions/ui/status/${taskId}`);
   return data;
 };
 
@@ -52,11 +52,11 @@ export const createOperation = async (operation: OperationCreate): Promise<Opera
 
 export const fetchPredictions = async (patientId?: number): Promise<PredictionRecord[]> => {
   const params = patientId ? { patient_id: patientId } : {};
-  const { data } = await api.get<PredictionRecord[]>('/predictions', { params });
+  const { data } = await api.get<PredictionRecord[]>('/predictions/ui/history', { params });
   return data;
 };
 
 export const fetchPredictionById = async (id: number): Promise<PredictionRecord> => {
-  const { data } = await api.get<PredictionRecord>(`/predictions/${id}`);
+  const { data } = await api.get<PredictionRecord>(`/predictions/ui/history/${id}`);
   return data;
 };

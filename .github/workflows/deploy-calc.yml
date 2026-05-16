@@ -1,0 +1,46 @@
+name: Deploy Calc Service
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+on:
+  push:
+    paths:
+      - 'calc_service/**'
+      - 'requirements/calc.txt'
+      - 'infrastructure/docker/calc_service.Dockerfile'
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Copy to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          source: "calc_service/,requirements/calc.txt,infrastructure/docker/calc_service.Dockerfile"
+          target: ${{ secrets.VPS_PROJECT_PATH }}
+          strip_components: 0
+      
+      - name: Reload calc service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            cd ${{ secrets.VPS_PROJECT_PATH }}
+            docker compose build risk-calc-service
+            docker compose up -d --no-deps risk-calc-service
+            echo "✅ Calc Service deployed"
