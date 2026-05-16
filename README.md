@@ -60,8 +60,6 @@ docker network create docker_web-network
 
 
 
-
-
 ```
 risk-predictor
 ├─ .$idef0.xml.bkp
@@ -174,10 +172,8 @@ risk-predictor
 │  │  └─ importance.py
 │  ├─ main.py
 │  ├─ model_versions
-│  │  ├─ latest.pkl
 │  │  ├─ model_v1.pkl
-│  │  ├─ model_v2.pkl
-│  │  └─ model_v3.pkl
+│  │  └─ model_v2.pkl
 │  ├─ models
 │  │  ├─ __init__.py
 │  │  ├─ loader.py

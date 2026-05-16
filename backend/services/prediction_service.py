@@ -62,9 +62,15 @@ class PredictionService:
         """
         # 1. Запрашиваем у ML-сервиса список необходимых фич
         ml_data = await ml_client.get_model_info(version)
-        ml_required = ml_data["info"].get("required_features", [])
+        
+        # --- ИСПРАВЛЕНИЕ: Безопасное извлечение списка фич без привязки к ключу "info" ---
+        if "info" in ml_data and isinstance(ml_data["info"], dict):
+            ml_required = ml_data["info"].get("required_features", [])
+        else:
+            ml_required = ml_data.get("required_features", [])
+        # ---------------------------------------------------------------------------------
 
-        # ---- ВОТ СЮДА ВСТАВЛЯЕТСЯ ПРАВКА ДЛЯ PUMP ----
+        # ---- ПРАВКА ДЛЯ PUMP ----
         # Принудительно гарантируем, что флаг pump всегда присутствует в запросах интерфейса,
         # так как он критически важен для проксирования и маршрутизации моделей бэкенда.
         PUMP_FLAG = "pump (0/1)"
@@ -151,8 +157,8 @@ class PredictionService:
                 })
 
         return {
-            "available_versions": ml_data["available_versions"],
-            "current_version": ml_data["current_version"],
+            "available_versions": ml_data.get("available_versions", []),
+            "current_version": ml_data.get("current_version", ml_data.get("version", "")),
             "ui_schema": {
                 "form_blocks": ui_blocks,
                 "calculated_metrics_needed": required_calc_metrics

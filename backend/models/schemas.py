@@ -179,21 +179,32 @@ class OperationInfo(BaseModel):
 
 
 class PredictRequest(BaseModel):
-    """Prediction request."""
+    """Prediction request с поддержкой гибких полей ансамбля."""
     features: Dict[str, Any]
     model_version: Optional[str] = None
     operation_id: Optional[int] = None
 
+    # Позволяет схеме не падать по 422, если с фронта/датасета прилетают дополнительные мета-поля
+    model_config = ConfigDict(extra="allow")
 
+# Добавьте класс описания одной цели/мишени риска
+class TargetRiskItem(BaseModel):
+    name: str
+    score: float
+    level: str
+
+# Обновите основную схему ответа
 class PredictResponse(BaseModel):
-    """Risk prediction response."""
-    prediction_id: int
+    """Расширенный ответ риска с поддержкой мультиклассовости."""
+    prediction_id: Optional[int] = Field(None, alias="id") # поддержка id из БД
     risk_score: float
     risk_level: str
     model_version: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
+    saved: bool = False
+    targets: List[TargetRiskItem] = [] # Новый массив для детализации рисков (v4 ансамбль)
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 # =====================

@@ -1,102 +1,83 @@
-export interface ModelVersionInfo {
-  is_current: boolean;
-  features_count: number;
-  framework: string;
-  model_type: string;
-  loaded_at?: string;
-  file_size_mb?: number;
+// Типы для Risk Predictor
+
+export type RiskLevel = 'low' | 'medium' | 'high' | 'danger';
+
+export interface TargetRiskItem {
+  name: string;
+  score: number;
+  level: RiskLevel;
 }
 
-export interface ModelConfig {
-  available_versions: string[];
-  current_version: string;
-  features: string[];
-  top_features: string[];
-  categorical_features: string[];
+export interface PredictionResponse {
+  risk_score: number;
+  risk_level: RiskLevel;
+  model_version: string;
+  targets: TargetRiskItem[];
 }
 
-export interface PatientCreate {
-  sex: string;
-  birth_date: string; // ISO date string "YYYY-MM-DD"
+export interface MetricItem {
+  value: number;
+  label: string;
+  level: RiskLevel;
 }
 
-export interface PatientResponse {
+export interface CalculatorResponse {
+  status: string;
+  metrics: Record<string, MetricItem>;
+}
+
+export interface PatientFeatures {
+  'Пол (0=жен,1=муж)': number;
+  'Возраст (лет)': number;
+  'Рост (м)': number;
+  'Вес (кг)': number;
+  'Срочность (0=план,1=экстр)': number;
+  'Гипертония (0/1)': number;
+  'Сахарный диабет (0/1)': number;
+  'ХОБЛ (0/1)': number;
+  'ХБП'?: number;
+  'Креатинин в ОРИТ (мкмоль/л)': number;
+  'Категория ФВ ЛЖ': number;
+  'ХСН ФК': number;
+  pump: number;
+  'ФП в анамнезе (0/1)': number;
+  'Лёгочная гипертензия (0/1)'?: number;
+  'ИМ в анамнезе (0/1)'?: number;
+  'ХСН (0/1)'?: number;
+  'ОНМК в анамнезе (0/1)'?: number;
+  'Атеросклероз НК (0/1)'?: number;
+  'Атеросклероз БЦА (0/1)'?: number;
+  'Язвенная болезнь ЖКТ (0/1)'?: number;
+  [key: string]: number | string | undefined;
+}
+
+export interface HistoryRecord {
   id: number;
-  sex: string;
-  birth_date: string;
-  created_at: string;
-}
-
-export interface OperationCreate {
-  patient_id: number;
-  type: string;
-  date: string; // ISO date string "YYYY-MM-DD"
-}
-
-export interface OperationResponse {
-  id: number;
-  patient_id: number;
-  type: string;
   date: string;
-  created_at: string;
+  operationId: string;
+  riskScore: number;
+  riskLevel: RiskLevel;
+  model: string;
+  euroscore: number;
+  features: PatientFeatures;
+  targets: TargetRiskItem[];
 }
 
-export interface PredictRequest {
-  features: Record<string, unknown>;
-  model_version?: string;
-  operation_id?: number;
+export interface FieldSchema {
+  key: string;
+  label: string;
+  type: 'number' | 'select' | 'toggle';
+  group: 'general' | 'anamnesis' | 'operation' | 'labs';
+  default?: number | string;
+  unit?: string;
+  options?: { label: string; value: number | string }[];
+  min?: number;
+  max?: number;
+  step?: number;
 }
 
-export interface PredictResultAnonymous {
-  status: 'completed';
-  saved: false;
-  result: {
-    risk_score: number;
-    risk_level: 'low' | 'medium' | 'high';
-    version: string;
-    framework?: string;
-    risk_percent?: number;
-  };
-}
-
-export interface PredictResultAsync {
-  task_id: string;
-  status: 'pending';
-}
-
-export type PredictResponse = PredictResultAnonymous | PredictResultAsync;
-
-export interface TaskStatus {
-  status: 'pending' | 'completed' | 'failed';
-  operation_id?: number;
-  result?: {
-    risk_score: number;
-    risk_level: 'low' | 'medium' | 'high';
-    version: string;
-    framework?: string;
-    risk_percent?: number;
-  };
-  error?: string;
-}
-
-export interface PredictionRecord {
-  id: number;
-  risk_score: number;
-  risk_level: RiskLevel;
-  created_at: string;
-  operation: {
-    type: string;
-    date: string;
-  };
-  features: Record<string, unknown>;
-  patient?: PatientResponse;
-}
-
-export type RiskLevel = 'low' | 'medium' | 'high';
-
-export interface PredictionResult {
-  risk_score: number;
-  risk_level: RiskLevel;
-  version: string;
-  framework?: string;
+export interface ModelVersion {
+  id: string;
+  label: string;
+  description?: string;
 }
