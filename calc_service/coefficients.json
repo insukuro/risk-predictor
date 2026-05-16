@@ -1,0 +1,47 @@
+{
+  "euroscore_coefficients": {
+    "intercept": -5.324537, "age": 0.0285181, "sex_female": 0.2196434,
+    "extracardiac": 0.5306827, "copd": 0.1886564, "diabetes_insulin": 0.3542749,
+    "urgency_urgent": 0.3174673, "renal_50_85": 0.303553, "renal_lt_50": 0.8592256,
+    "nyha_2": 0.1070545, "nyha_3": 0.2958358, "nyha_4": 0.5593929,
+    "lv_31_50": 0.3150652, "lv_le_30": 0.8039273, "paph_mod": 0.1788899
+  },
+  "thresholds": {
+    "bmi": [
+      {"max": 18.5, "label": "Дефицит массы тела", "level": "medium"},
+      {"max": 25.0, "label": "Нормальный вес", "level": "low"},
+      {"max": 30.0, "label": "Избыточная масса тела", "level": "medium"},
+      {"max": 35.0, "label": "Ожирение I степени", "level": "high"},
+      {"max": 999.0, "label": "Ожирение II-III степени", "level": "danger"}
+    ],
+    "cl_cr": [
+      {"min": 90.0, "label": "Норма или высокая функция (ХБП 1)", "level": "low"},
+      {"min": 60.0, "label": "Легкое снижение функции (ХБП 2)", "level": "low"},
+      {"min": 30.0, "label": "Умеренное снижение функции (ХБП 3)", "level": "medium"},
+      {"min": 15.0, "label": "Тяжелое снижение функции (ХБП 4)", "level": "high"},
+      {"min": 0.0, "label": "Терминальная почечная недостаточность (ХБП 5)", "level": "danger"}
+    ],
+    "cci": [
+      {"max": 1, "label": "Низкая коморбидность", "level": "low"},
+      {"max": 3, "label": "Умеренная коморбидность", "level": "medium"},
+      {"max": 5, "label": "Высокая коморбидность", "level": "high"},
+      {"max": 999, "label": "Критическая коморбидность", "level": "danger"}
+    ],
+    "euroscore": [
+      {"max": 2.0, "label": "Низкий операционный риск", "level": "low"},
+      {"max": 5.0, "label": "Умеренный операционный риск", "level": "medium"},
+      {"max": 10.0, "label": "Высокий операционный риск", "level": "high"},
+      {"max": 100.0, "label": "Экстремальный операционный риск", "level": "danger"}
+    ],
+    "chads_vasc": [
+      {"max": 0, "label": "Низкий риск инсульта", "level": "low"},
+      {"max": 1, "label": "Умеренный риск инсульта", "level": "medium"},
+      {"max": 99, "label": "Высокий риск инсульта", "level": "danger"}
+    ],
+    "has_bled": [
+      {"max": 1, "label": "Низкий риск кровотечений", "level": "low"},
+      {"max": 2, "label": "Умеренный риск кровотечений", "level": "medium"},
+      {"max": 99, "label": "Высокий риск кровотечений", "level": "danger"}
+    ]
+  }
+}

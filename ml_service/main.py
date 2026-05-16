@@ -35,17 +35,28 @@ async def health():
         "available_versions": list(registry.models.keys())
     }
 
+
+
 @app.get("/models/versions")
 async def list_versions():
     """Список всех версий моделей."""
     versions_info = {}
     
     for version, package in registry.models.items():
+        # Определяем тип модели в зависимости от формата пакета
+        if package.get('is_ensemble'):
+            # Для ансамбля берем тип первой попавшейся модели из веток
+            models_ik = package.get('models_ik', {})
+            sample_model = list(models_ik.values())[0] if models_ik else None
+            model_type = f"Ensemble ({type(sample_model).__name__})" if sample_model else "Ensemble"
+        else:
+            model_type = type(package.get('model')).__name__ if package.get('model') else "unknown"
+
         versions_info[version] = {
             "is_current": version == registry.current_version,
             "features_count": len(package['feature_names']),
             "framework": package.get('framework', 'unknown'),
-            "model_type": type(package['model']).__name__,
+            "model_type": model_type,
             "loaded_at": package.get('_loaded_at'),
             "file_size_mb": package.get('_file_size_mb')
         }
@@ -63,11 +74,19 @@ async def model_info(version: str = None):
     feature_names, _ = get_feature_importance(package)
     top_features = get_top_features(package, top_n=10)
     
+    # Защита от KeyError для типа модели
+    if package.get('is_ensemble'):
+        models_ik = package.get('models_ik', {})
+        sample_model = list(models_ik.values())[0] if models_ik else None
+        model_type = f"Ensemble ({type(sample_model).__name__})" if sample_model else "Ensemble"
+    else:
+        model_type = type(package.get('model')).__name__ if package.get('model') else "unknown"
+    
     return {
         "version": actual_version,
         "is_current": actual_version == registry.current_version,
         "framework": package.get('framework', 'unknown'),
-        "model_type": type(package['model']).__name__,
+        "model_type": model_type,
         "total_features": len(feature_names),
         "required_features": top_features,
         "categorical_features": package.get('categorical_features', []),
@@ -94,9 +113,16 @@ async def get_demo_data(version: str = None):
             return {
                 "version": actual_version,
                 "demo_available": False,
-                "message": "Demo data not embedded in this model. Use /model/info to see required features."
+                "message": "Demo data not embedded in this model. Use /model/info to see required features.",
+                "demo_input_features": {}
             }
         
+        # Гарантируем для контракта, что pump присутствует в признаках
+        if isinstance(demo_data, dict):
+            if "pump (0/1)" not in demo_data:
+                # Если есть ключ 'pump', маппим его, иначе ставим 1
+                demo_data["pump (0/1)"] = demo_data.get("pump", 1)
+
         # Запускаем предсказание на демо-данных
         prediction = predict(package, demo_data)
         

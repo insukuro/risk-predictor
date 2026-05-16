@@ -43,8 +43,7 @@ sudo usermod -aG docker $USER
 3) Создайте общие сети
 
 ```bash
-docker network create ml-back
-docker network create front-back
+docker network create docker_web-network
 
 ```
 
@@ -61,19 +60,16 @@ docker network create front-back
 
 
 
-
 ```
 risk-predictor
 ├─ .$idef0.xml.bkp
-├─ DOCKER_GUIDE.md
+├─ .dockerignore
 ├─ README.md
 ├─ alembic
 │  ├─ README
 │  ├─ env.py
 │  ├─ script.py.mako
 │  └─ versions
-│     ├─ 759764205143_initial_schema_snapshot.py
-│     └─ d74ee7ac2e29_make_operation_id_nullable.py
 ├─ alembic.ini
 ├─ backend
 │  ├─ __init__.py
@@ -88,6 +84,8 @@ risk-predictor
 │  │     ├─ operations.py
 │  │     ├─ patients.py
 │  │     └─ predictions.py
+│  ├─ clients
+│  │  └─ ml_client.py
 │  ├─ db
 │  │  ├─ __init__.py
 │  │  ├─ models.py
@@ -101,7 +99,19 @@ risk-predictor
 │     ├─ operation_service.py
 │     ├─ patient_service.py
 │     └─ prediction_service.py
-├─ docker-compose.risk-predictor.yml
+├─ calc_service
+│  ├─ app
+│  │  ├─ __init__.py
+│  │  ├─ api_endpoints.py
+│  │  ├─ engine.py
+│  │  ├─ schemas.py
+│  │  └─ ui_endpoints.py
+│  ├─ coefficients.json
+│  ├─ config.py
+│  └─ main.py
+├─ data
+│  └─ postgres
+├─ docker-compose.yml
 ├─ frontend
 │  ├─ index.html
 │  ├─ package-lock.json
@@ -110,6 +120,7 @@ risk-predictor
 │  │  ├─ App.tsx
 │  │  ├─ components
 │  │  │  ├─ Header.tsx
+│  │  │  ├─ HistoryView.tsx
 │  │  │  ├─ ModelInfoCard.tsx
 │  │  │  ├─ PatientDialog.tsx
 │  │  │  ├─ PredictiveForm.tsx
@@ -133,8 +144,6 @@ risk-predictor
 │  │  ├─ main.tsx
 │  │  ├─ types
 │  │  │  └─ index.ts
-│  │  ├─ utils
-│  │  │  └─ cn.ts
 │  │  └─ vite-env.d.ts
 │  ├─ tsconfig.json
 │  └─ vite.config.ts
@@ -145,7 +154,9 @@ risk-predictor
 ├─ infrastructure
 │  ├─ docker
 │  │  ├─ backend.Dockerfile
+│  │  ├─ calc_service.Dockerfile
 │  │  ├─ database.Dockerfile
+│  │  ├─ entrypoint.sh
 │  │  ├─ frontend.Dockerfile
 │  │  ├─ init-db.sql
 │  │  └─ ml_service.Dockerfile
@@ -162,8 +173,7 @@ risk-predictor
 │  ├─ main.py
 │  ├─ model_versions
 │  │  ├─ model_v1.pkl
-│  │  ├─ model_v2.pkl
-│  │  └─ model_v3.pkl
+│  │  └─ model_v2.pkl
 │  ├─ models
 │  │  ├─ __init__.py
 │  │  ├─ loader.py
@@ -175,9 +185,12 @@ risk-predictor
 │  └─ utils
 │     ├─ __init__.py
 │     └─ helpers.py
-└─ requirements
-   ├─ backend.txt
-   ├─ base.txt
-   └─ ml.txt
+├─ requirements
+│  ├─ backend.txt
+│  ├─ base.txt
+│  ├─ calc.txt
+│  └─ ml.txt
+└─ scripts
+   └─ auto-version-models.sh
 
 ```

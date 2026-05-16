@@ -1,97 +1,98 @@
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
 import type { RiskLevel } from '../types';
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-export function getRiskColor(level: RiskLevel) {
+export function riskLevelColor(level: RiskLevel): string {
   switch (level) {
     case 'low':
-      return {
-        bg: 'bg-emerald-50',
-        border: 'border-emerald-200',
-        text: 'text-emerald-700',
-        badge: 'bg-emerald-100 text-emerald-700',
-        bar: 'bg-emerald-500',
-        ring: 'ring-emerald-200',
-        label: 'Низкий риск',
-      };
+      return 'text-emerald-600';
     case 'medium':
-      return {
-        bg: 'bg-amber-50',
-        border: 'border-amber-200',
-        text: 'text-amber-700',
-        badge: 'bg-amber-100 text-amber-700',
-        bar: 'bg-amber-500',
-        ring: 'ring-amber-200',
-        label: 'Средний риск',
-      };
+      return 'text-amber-600';
     case 'high':
-      return {
-        bg: 'bg-red-50',
-        border: 'border-red-200',
-        text: 'text-red-700',
-        badge: 'bg-red-100 text-red-700',
-        bar: 'bg-red-500',
-        ring: 'ring-red-200',
-        label: 'Высокий риск',
-      };
+      return 'text-orange-600';
+    case 'danger':
+      return 'text-red-600';
   }
 }
 
-export function getFrameworkColor(framework: string) {
-  switch (framework?.toLowerCase()) {
-    case 'catboost':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    case 'sklearn':
-      return 'bg-blue-100 text-blue-800 border-blue-200';
-    case 'xgboost':
-      return 'bg-purple-100 text-purple-800 border-purple-200';
-    case 'lightgbm':
-      return 'bg-green-100 text-green-800 border-green-200';
-    default:
-      return 'bg-slate-100 text-slate-700 border-slate-200';
+export function riskLevelBg(level: RiskLevel): string {
+  switch (level) {
+    case 'low':
+      return 'bg-emerald-50 border-emerald-200 text-emerald-700';
+    case 'medium':
+      return 'bg-amber-50 border-amber-200 text-amber-700';
+    case 'high':
+      return 'bg-orange-50 border-orange-200 text-orange-700';
+    case 'danger':
+      return 'bg-red-50 border-red-200 text-red-700';
   }
 }
 
-export function formatDate(dateStr: string) {
+export function riskLevelSolidBg(level: RiskLevel): string {
+  switch (level) {
+    case 'low':
+      return 'bg-emerald-500';
+    case 'medium':
+      return 'bg-amber-500';
+    case 'high':
+      return 'bg-orange-500';
+    case 'danger':
+      return 'bg-red-500';
+  }
+}
+
+export function riskLevelRing(level: RiskLevel): string {
+  switch (level) {
+    case 'low':
+      return 'stroke-emerald-500';
+    case 'medium':
+      return 'stroke-amber-500';
+    case 'high':
+      return 'stroke-orange-500';
+    case 'danger':
+      return 'stroke-red-500';
+  }
+}
+
+export function riskLevelLabel(level: RiskLevel): string {
+  switch (level) {
+    case 'low':
+      return 'Низкий';
+    case 'medium':
+      return 'Умеренный';
+    case 'high':
+      return 'Высокий';
+    case 'danger':
+      return 'Критический';
+  }
+}
+
+export function riskLevelGradient(level: RiskLevel): string {
+  switch (level) {
+    case 'low':
+      return 'from-emerald-500 to-green-500';
+    case 'medium':
+      return 'from-amber-500 to-yellow-500';
+    case 'high':
+      return 'from-orange-500 to-red-500';
+    case 'danger':
+      return 'from-red-500 to-rose-600';
+  }
+}
+
+export function classNames(...classes: (string | false | null | undefined)[]): string {
+  return classes.filter(Boolean).join(' ');
+}
+
+export function formatDate(iso: string): string {
   try {
-    return new Date(dateStr).toLocaleDateString('ru-RU', {
+    const d = new Date(iso);
+    return d.toLocaleString('ru-RU', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   } catch {
-    return dateStr;
+    return iso;
   }
-}
-
-export function getDefaultFeatureValue(featureName: string): number | string {
-  const f = featureName.toLowerCase();
-  if (f.includes('возраст') || f.includes('age')) return 60;
-  if (f.includes('hb') || f.includes('гемоглобин') || f.includes('hemoglobin')) return 120;
-  if (f.includes('креатинин') || f.includes('creatinine')) return 80;
-  if (f.includes('мочевина') || f.includes('urea')) return 5;
-  if (f.includes('k+') || f.includes('калий') || f.includes('potassium')) return 4.0;
-  if (f.includes('na+') || f.includes('натрий') || f.includes('sodium')) return 140;
-  if (f.includes('глюкоза') || f.includes('glucose')) return 5.5;
-  if (f.includes('0/1') || f.includes('наличие') || f.includes('гипертония') || f.includes('диабет')) return 0;
-  return 0;
-}
-
-export function isCategoricalBoolean(featureName: string): boolean {
-  const f = featureName.toLowerCase();
-  return (
-      f.includes('0/1') ||
-      f.includes('наличие') ||
-      f.includes('гипертония') ||
-      f.includes('диабет') ||
-      f.includes('курение') ||
-      f.includes('ожирение') ||
-      f.includes('инфаркт') ||
-      f.includes('инсульт') ||
-      f.includes('фибрилляция')
-  );
 }
