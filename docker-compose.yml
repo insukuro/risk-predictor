@@ -1,3 +1,4 @@
+version: '3.8'
 
 networks:
   docker_web-network:
@@ -27,7 +28,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Clinical Calculator Service (НОВЫЙ)
+  # Clinical Calculator Service
   risk-calc:
     build:
       context: .
@@ -38,7 +39,8 @@ services:
       - docker_web-network
     restart: always
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8005/docs"]
+      # Заменили curl на python-команду на случай отсутствия curl внутри контейнера калькулятора
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/ui/metadata', timeout=5)"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -56,7 +58,7 @@ services:
       - docker_web-network
     restart: always
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=5)"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -93,6 +95,7 @@ services:
       args:
         - VITE_API_URL=/api
         - VITE_API_BASE_URL=/api
+        - VITE_CALC_URL=/calc
     container_name: risk-predictor-frontend
     environment:
       VIRTUAL_HOST: cabg.insukuro.ru
@@ -101,6 +104,7 @@ services:
       LETSENCRYPT_EMAIL: tukhtarovilkhom@gmail.com
       VITE_API_URL: /api
       VITE_API_BASE_URL: /api
+      VITE_CALC_URL: /calc
     networks:
       - docker_web-network
     ports:

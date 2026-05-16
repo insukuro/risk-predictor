@@ -47,7 +47,7 @@ Thumbs.db
 # Alembic specific
 alembic/__pycache__/
 alembic/versions/__pycache__/
-
+.env
 # Databases
 *.db
 *.sqlite
