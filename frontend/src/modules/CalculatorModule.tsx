@@ -15,198 +15,22 @@ import { getCalculatorMetadata, calculateAllMetrics } from '../api/calculators';
 import { cn } from '../utils/cn';
 import type { CalculatorMetadata, UIAllMetricsResponse, FormValues, UIResultItem } from '../types';
 
-// Field metadata for grouping and display
-const FIELD_METADATA: Record<string, {
-  label: string;
-  group: string;
-  type: 'number' | 'select';
-  options?: { value: number; label: string }[];
-  min?: number;
-  max?: number;
-  step?: number;
-}> = {
-  'Пол (0=жен,1=муж)': {
-    label: 'Пол',
-    group: 'Общая информация',
-    type: 'select',
-    options: [
-      { value: 0, label: 'Женский' },
-      { value: 1, label: 'Мужской' },
-    ],
-  },
-  'Возраст (лет)': {
-    label: 'Возраст (лет)',
-    group: 'Общая информация',
-    type: 'number',
-    min: 0,
-    max: 120,
-  },
-  'Вес (кг)': {
-    label: 'Вес (кг)',
-    group: 'Общая информация',
-    type: 'number',
-    min: 10,
-    max: 300,
-  },
-  'Рост (м)': {
-    label: 'Рост (м)',
-    group: 'Общая информация',
-    type: 'number',
-    min: 0.5,
-    max: 2.5,
-    step: 0.01,
-  },
-  'Креатинин в ОРИТ (мкмоль/л)': {
-    label: 'Креатинин (мкмоль/л)',
-    group: 'Лабораторные показатели',
-    type: 'number',
-    min: 0,
-    max: 2000,
-  },
-  'Категория ФВ ЛЖ': {
-    label: 'Категория ФВ ЛЖ',
-    group: 'Кардиометрия',
-    type: 'select',
-    options: [
-      { value: 1, label: 'Нормальная (≥50%)' },
-      { value: 2, label: 'Умеренно снижена (30-49%)' },
-      { value: 3, label: 'Низкая (<30%)' },
-    ],
-  },
-  'ХСН ФК': {
-    label: 'ХСН Функциональный класс',
-    group: 'Кардиометрия',
-    type: 'select',
-    options: [
-      { value: 0, label: 'Нет ХСН' },
-      { value: 1, label: 'I ФК' },
-      { value: 2, label: 'II ФК' },
-      { value: 3, label: 'III ФК' },
-      { value: 4, label: 'IV ФК' },
-    ],
-  },
-  'Лёгочная гипертензия (0/1)': {
-    label: 'Лёгочная гипертензия',
-    group: 'Кардиометрия',
-    type: 'select',
-    options: [
-      { value: 0, label: 'Нет' },
-      { value: 1, label: 'Да' },
-    ],
-  },
-  'Гипертония (0/1)': {
-    label: 'Артериальная гипертензия',
-    group: 'Анамнез',
-    type: 'select',
-    options: [
-      { value: 0, label: 'Нет' },
-      { value: 1, label: 'Да' },
-    ],
-  },
-  'ФП в анамнезе (0/1)': {
-    label: 'Фибрилляция предсердий',
-    group: 'Анамнез',
-    type: 'select',
-    options: [
-      { value: 0, label: 'Нет' },
-      { value: 1, label: 'Да' },
-    ],
-  },
-  'ИМ в анамнезе (0/1)': {
-    label: 'Инфаркт миокарда в анамнезе',
-    group: 'Анамнез',
-    type: 'select',
-    options: [
-      { value: 0, label: 'Нет' },
-      { value: 1, label: 'Да' },
-    ],
-  },
-  'ХСН (0/1)': {
-    label: 'Хроническая сердечная недостаточность',
-    group: 'Анамнез',
-    type: 'select',
-    options: [
-      { value: 0, label: 'Нет' },
-      { value: 1, label: 'Да' },
-    ],
-  },
-  'Сахарный диабет (0/1)': {
-    label: 'Сахарный диабет',
-    group: 'Коморбидность',
-    type: 'select',
-    options: [
-      { value: 0, label: 'Нет' },
-      { value: 1, label: 'Да' },
-    ],
-  },
-  'ХОБЛ (0/1)': {
-    label: 'ХОБЛ',
-    group: 'Коморбидность',
-    type: 'select',
-    options: [
-      { value: 0, label: 'Нет' },
-      { value: 1, label: 'Да' },
-    ],
-  },
-  'ОНМК в анамнезе (0/1)': {
-    label: 'ОНМК в анамнезе',
-    group: 'Коморбидность',
-    type: 'select',
-    options: [
-      { value: 0, label: 'Нет' },
-      { value: 1, label: 'Да' },
-    ],
-  },
-  'Атеросклероз НК (0/1)': {
-    label: 'Атеросклероз нижних конечностей',
-    group: 'Коморбидность',
-    type: 'select',
-    options: [
-      { value: 0, label: 'Нет' },
-      { value: 1, label: 'Да' },
-    ],
-  },
-  'Атеросклероз БЦА (0/1)': {
-    label: 'Атеросклероз БЦА',
-    group: 'Коморбидность',
-    type: 'select',
-    options: [
-      { value: 0, label: 'Нет' },
-      { value: 1, label: 'Да' },
-    ],
-  },
-  'Язвенная болезнь ЖКТ (0/1)': {
-    label: 'Язвенная болезнь ЖКТ',
-    group: 'Коморбидность',
-    type: 'select',
-    options: [
-      { value: 0, label: 'Нет' },
-      { value: 1, label: 'Да' },
-    ],
-  },
-  'Срочность (0=план,1=экстр)': {
-    label: 'Срочность операции',
-    group: 'Операция',
-    type: 'select',
-    options: [
-      { value: 0, label: 'Плановая' },
-      { value: 1, label: 'Экстренная' },
-    ],
-  },
-  'pump': {
-    label: 'Искусственное кровообращение',
-    group: 'Операция',
-    type: 'select',
-    options: [
-      { value: 0, label: 'Off-pump' },
-      { value: 1, label: 'On-pump' },
-    ],
-  },
-};
+// Расширяем тип метаданных, так как бэкенд теперь присылает и конфигурацию полей
+interface ExtendedCalculatorMetadata extends CalculatorMetadata {
+  field_metadata: Record<string, {
+    label: string;
+    group: string;
+    type: 'number' | 'select';
+    options?: { value: number; label: string }[];
+    min?: number;
+    max?: number;
+    step?: number;
+  }>;
+}
 
 export const CalculatorModule: React.FC = () => {
   // State
-  const [metadata, setMetadata] = useState<CalculatorMetadata | null>(null);
+  const [metadata, setMetadata] = useState<ExtendedCalculatorMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -229,10 +53,9 @@ export const CalculatorModule: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getCalculatorMetadata();
+      const data = await getCalculatorMetadata() as ExtendedCalculatorMetadata;
       setMetadata(data);
-      // Initialize form with default values
-      initializeForm(data.required_inputs);
+      initializeForm(data.required_inputs, data.field_metadata);
     } catch (err: any) {
       setError(err.message);
       toast.error('Ошибка загрузки метаданных калькулятора');
@@ -241,10 +64,10 @@ export const CalculatorModule: React.FC = () => {
     }
   };
 
-  const initializeForm = (fields: string[]) => {
+  const initializeForm = (fields: string[], fieldMetadata: Record<string, any>) => {
     const initialValues: FormValues = {};
     fields.forEach(fieldId => {
-      const meta = FIELD_METADATA[fieldId];
+      const meta = fieldMetadata?.[fieldId];
       if (meta?.type === 'select' && meta.options) {
         initialValues[fieldId] = meta.options[0]?.value ?? 0;
       } else {
@@ -262,16 +85,16 @@ export const CalculatorModule: React.FC = () => {
       return metadata.required_inputs;
     }
 
-    const calc = metadata.calculators[selectedCalculator];
-    return calc?.required_inputs || [];
+    return metadata.calculators[selectedCalculator]?.required_inputs || [];
   }, [metadata, selectedCalculator]);
 
-  // Group fields by category
+  // Group fields by category using dynamic metadata from backend
   const groupedFields = useMemo(() => {
     const groups: Record<string, string[]> = {};
+    if (!metadata?.field_metadata) return groups;
 
     visibleFields.forEach(fieldId => {
-      const meta = FIELD_METADATA[fieldId];
+      const meta = metadata.field_metadata[fieldId];
       const group = meta?.group || 'Прочее';
       if (!groups[group]) {
         groups[group] = [];
@@ -280,9 +103,9 @@ export const CalculatorModule: React.FC = () => {
     });
 
     return groups;
-  }, [visibleFields]);
+  }, [visibleFields, metadata]);
 
-  // Calculator options
+  // Calculator options for selection dropdown
   const calculatorOptions = useMemo(() => {
     if (!metadata) return [];
 
@@ -305,7 +128,15 @@ export const CalculatorModule: React.FC = () => {
   // Handle calculator change
   const handleCalculatorChange = (calcId: string) => {
     setSelectedCalculator(calcId);
-    setResults(null);
+    setResults(null); // Сбрасываем старые результаты, чтобы они не путали пользователя
+    
+    if (metadata) {
+      // Переинициализируем форму под новый набор полей
+      const fields = calcId === 'all' 
+        ? metadata.required_inputs 
+        : metadata.calculators[calcId]?.required_inputs || [];
+      initializeForm(fields, metadata.field_metadata);
+    }
   };
 
   // Handle calculate
@@ -314,16 +145,21 @@ export const CalculatorModule: React.FC = () => {
     setResults(null);
 
     try {
-      // Build payload with only visible fields
-      const payload: FormValues = {};
+      // Собираем фичи только для тех полей, которые видны на экране
+      const features: FormValues = {};
       visibleFields.forEach(fieldId => {
         const value = formValues[fieldId];
         if (value !== null && value !== undefined) {
-          payload[fieldId] = value;
+          features[fieldId] = value;
         }
       });
 
-      const response = await calculateAllMetrics(payload);
+      // Передаем структурированный payload в обновленный API клиент
+      const response = await calculateAllMetrics({
+        features,
+        calculator_id: selectedCalculator
+      });
+      
       setResults(response);
       toast.success('Расчёт выполнен успешно');
     } catch (err: any) {
@@ -333,11 +169,11 @@ export const CalculatorModule: React.FC = () => {
     }
   };
 
-  // Render field
+  // Render field dynamically based on backend schema
   const renderField = (fieldId: string) => {
-    const meta = FIELD_METADATA[fieldId];
+    const meta = metadata?.field_metadata?.[fieldId];
     const value = formValues[fieldId];
-    const isCategorical = metadata?.categorical_inputs.includes(fieldId);
+    const isCategorical = metadata?.categorical_inputs?.includes(fieldId);
 
     if (isCategorical || meta?.type === 'select') {
       return (
@@ -378,7 +214,7 @@ export const CalculatorModule: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full" />
-          <p className="text-slate-600">Загрузка калькуляторов...</p>
+          <p className="text-slate-600">Загрузка конфигурации калькуляторов...</p>
         </div>
       </div>
     );
@@ -392,7 +228,7 @@ export const CalculatorModule: React.FC = () => {
           <CardContent className="py-8 text-center">
             <Calculator className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h3 className="font-semibold text-slate-900 mb-2">
-              Ошибка загрузки
+              Ошибка загрузки конфигурации
             </h3>
             <p className="text-slate-600 mb-4">{error}</p>
             <Button onClick={loadMetadata} icon={<RefreshCw className="h-4 w-4" />}>
@@ -413,7 +249,7 @@ export const CalculatorModule: React.FC = () => {
             Медицинские калькуляторы
           </h2>
           <p className="text-slate-600 mt-1">
-            Расчёт клинических шкал и индексов
+            Расчёт клинических шкал и индексов на основе динамических моделей бэкенда
           </p>
         </div>
 
@@ -428,7 +264,7 @@ export const CalculatorModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Calculator info */}
+      {/* Calculator info badge */}
       {selectedCalculator !== 'all' && metadata?.calculators[selectedCalculator] && (
         <Card variant="default" className="bg-blue-50 border-blue-200">
           <CardContent className="py-4">
@@ -439,7 +275,7 @@ export const CalculatorModule: React.FC = () => {
                   {metadata.calculators[selectedCalculator].label}
                 </h3>
                 <p className="text-sm text-blue-700">
-                  Требуется {visibleFields.length} параметров
+                  Необходимо заполнить параметров: {visibleFields.length}
                 </p>
               </div>
             </div>
@@ -447,7 +283,7 @@ export const CalculatorModule: React.FC = () => {
         </Card>
       )}
 
-      {/* Form */}
+      {/* Dynamic Form Blocks */}
       <div className="space-y-6">
         {Object.entries(groupedFields).map(([group, fields]) => (
           <Card key={group}>
@@ -463,7 +299,7 @@ export const CalculatorModule: React.FC = () => {
         ))}
       </div>
 
-      {/* Calculate button */}
+      {/* Action button */}
       <div className="flex justify-center pt-4">
         <Button
           size="lg"
@@ -476,7 +312,7 @@ export const CalculatorModule: React.FC = () => {
         </Button>
       </div>
 
-      {/* Results */}
+      {/* Filtered Results */}
       {results && results.metrics && (
         <ResultsGrid metrics={results.metrics} />
       )}
