@@ -48,11 +48,11 @@ def load_model_from_file(file_path: Path) -> tuple:
         
         if not validate_model_package(package):
             return None, None
-
+        package['version'] = version
         # Определяем фреймворк для одиночной модели
         if 'model' in package and 'framework' not in package:
             package['framework'] = detect_framework(package['model'])
-
+        
         # Флаг ансамбля
         package['is_ensemble'] = 'models_ik' in package
 

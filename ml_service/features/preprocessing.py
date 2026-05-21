@@ -3,8 +3,7 @@ from typing import Dict, Any, List
 import pandas as pd
 import numpy as np
 from ml_service.utils.helpers import get_default_value
-from ml_service.features.importance import get_input_top_features  # ← ИЗМЕНИЛИ ИМПОРТ
-
+from ml_service.features.importance import get_input_top_features, get_top_features
 
 # Список признаков-таргетов
 TARGET_FEATURES = {
@@ -13,7 +12,6 @@ TARGET_FEATURES = {
     'Ревизия гемостаза', 'Медиастинит / ДГНР', 'Пневмония (инф.)',
     'Пневмония / ДН', 'ОРДС', 'Плеврит / гидроторакс',
 }
-
 
 def prepare_features(package: Dict, features_dict: Dict[str, Any]) -> pd.DataFrame:
     """Подготовка признаков для инференса."""
@@ -24,11 +22,11 @@ def prepare_features(package: Dict, features_dict: Dict[str, Any]) -> pd.DataFra
     # ФИЛЬТРАЦИЯ: убираем таргеты и дубликаты
     cleaned_features = _clean_input_features(features_dict)
     
+    # Получаем топ-10 признаков по важности
+    top_features = get_top_features(package, top_n=10)
+    
     # НОРМАЛИЗАЦИЯ ВХОДНЫХ ДАННЫХ
     normalized = _normalize_input_keys(cleaned_features, all_features)
-    
-    # Получаем топ-10 ТОЛЬКО входных признаков (без таргетов и дубликатов)
-    top_features = get_input_top_features(package, top_n=10)
     
     # Создаем дефолтные значения для ВСЕХ признаков
     full_features = {
@@ -39,7 +37,19 @@ def prepare_features(package: Dict, features_dict: Dict[str, Any]) -> pd.DataFra
     # Заполняем признаками, которые пришли
     for key, value in normalized.items():
         if key in all_features:
-            full_features[key] = value
+            # ЯВНОЕ ПРЕОБРАЗОВАНИЕ PUMP ПРИ ЗАПОЛНЕНИИ
+            if 'pump' in key.lower():
+                full_features[key] = _safe_convert_pump(value)
+            else:
+                full_features[key] = value
+    
+    # МЯГКИЙ ФИКС PUMP: гарантируем что значение pump из входных данных не теряется
+    pump_features_input = _extract_pump_from_input(features_dict)
+    if pump_features_input is not None:
+        for f in all_features:
+            if 'pump' in f.lower():
+                full_features[f] = _safe_convert_pump(pump_features_input)
+                break
     
     # Проверяем наличие всех топ-10 признаков
     missing = [f for f in top_features if f not in normalized]
@@ -49,15 +59,67 @@ def prepare_features(package: Dict, features_dict: Dict[str, Any]) -> pd.DataFra
     # Создаем DataFrame
     df = pd.DataFrame([full_features])
     
-    # Обработка категориальных признаков
+    # Обработка категориальных признаков 
     _process_categorical_features(df, categorical_features, framework)
     
     # Обработка числовых признаков
     numeric_features = [f for f in all_features if f not in categorical_features]
     _process_numeric_features(df, numeric_features)
     
+    # ФИНАЛЬНАЯ ГАРАНТИЯ: проверяем pump в последний раз
+    _final_pump_check(df, framework)
+    
     # Возвращаем с правильным порядком колонок
     return df[all_features]
+
+
+def _safe_convert_pump(value: Any) -> Any:
+    """Безопасное преобразование pump: 0/1 в int, все остальное оставляем как есть."""
+    if value is None or (isinstance(value, float) and np.isnan(value)):
+        return 0  # значение по умолчанию
+    
+    # Пробуем преобразовать в число
+    try:
+        numeric_value = float(value)
+        if numeric_value in [0, 1, 0.0, 1.0]:
+            return int(numeric_value)
+    except (ValueError, TypeError):
+        pass
+    
+    return value
+
+
+def _extract_pump_from_input(features_dict: Dict[str, Any]) -> Any:
+    """Извлекает значение pump из входных данных."""
+    for key, value in features_dict.items():
+        if 'pump' in key.lower():
+            return value
+    return None
+
+
+def _final_pump_check(df: pd.DataFrame, framework: str):
+    """
+    Финальная проверка: гарантирует, что pump - это int (для sklearn) или str (для CatBoost).
+    """
+    pump_cols = [col for col in df.columns if 'pump' in col.lower()]
+    
+    for pump_col in pump_cols:
+        if framework == 'catboost':
+            # Для CatBoost категориальные признаки должны быть строками
+            df[pump_col] = df[pump_col].apply(lambda x: str(int(float(x))) if pd.notna(x) and x != '' else '0')
+        else:
+            # Для sklearn - целые числа
+            df[pump_col] = df[pump_col].apply(lambda x: int(float(x)) if pd.notna(x) and x != '' else 0)
+
+
+def _process_numeric_features(df: pd.DataFrame, numeric_features: list):
+    """Обрабатывает числовые признаки."""
+    for num_feat in numeric_features:
+        if num_feat in df.columns:
+            # Пропускаем pump - он обрабатывается отдельно
+            if 'pump' in num_feat.lower():
+                continue
+            df[num_feat] = pd.to_numeric(df[num_feat], errors='coerce').fillna(0)
 
 
 def _clean_input_features(features: Dict[str, Any]) -> Dict[str, Any]:
@@ -84,6 +146,7 @@ def _clean_input_features(features: Dict[str, Any]) -> Dict[str, Any]:
         cleaned[key] = value
     
     return cleaned
+
 
 def _normalize_input_keys(input_dict: Dict[str, Any], expected_features: List[str]) -> Dict[str, Any]:
     """
@@ -134,8 +197,12 @@ def _process_categorical_features(df: pd.DataFrame, categorical_features: list, 
     for cat_feat in categorical_features:
         if cat_feat in df.columns:
             if framework == 'catboost':
-                df[cat_feat] = df[cat_feat].astype(str)
+                # Убеждаемся, что значения - строки, не float
+                df[cat_feat] = df[cat_feat].apply(
+                    lambda x: str(int(float(x))) if pd.notna(x) and x != '' else '0'
+                )
             else:
+                # Для sklearn - коды категорий
                 df[cat_feat] = pd.Categorical(df[cat_feat]).codes
 
 
