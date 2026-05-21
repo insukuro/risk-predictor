@@ -60,6 +60,7 @@ docker network create docker_web-network
 
 
 
+
 ```
 risk-predictor
 ├─ .$idef0.xml.bkp
@@ -118,33 +119,51 @@ risk-predictor
 │  ├─ package.json
 │  ├─ src
 │  │  ├─ App.tsx
+│  │  ├─ api
+│  │  │  ├─ analytics.ts
+│  │  │  ├─ calculators.ts
+│  │  │  ├─ client.ts
+│  │  │  ├─ index.ts
+│  │  │  ├─ mockData.ts
+│  │  │  ├─ patients.ts
+│  │  │  └─ predictions.ts
 │  │  ├─ components
-│  │  │  ├─ Header.tsx
-│  │  │  ├─ HistoryView.tsx
-│  │  │  ├─ ModelInfoCard.tsx
-│  │  │  ├─ PatientDialog.tsx
-│  │  │  ├─ PredictiveForm.tsx
+│  │  │  ├─ ClipboardButton.tsx
+│  │  │  ├─ DropZone.tsx
+│  │  │  ├─ DynamicForm.tsx
+│  │  │  ├─ ModeSelector.tsx
+│  │  │  ├─ PatientSelector.tsx
 │  │  │  ├─ ResultDisplay.tsx
 │  │  │  └─ ui
 │  │  │     ├─ Badge.tsx
 │  │  │     ├─ Button.tsx
 │  │  │     ├─ Card.tsx
-│  │  │     ├─ Dialog.tsx
+│  │  │     ├─ Drawer.tsx
 │  │  │     ├─ Input.tsx
+│  │  │     ├─ Modal.tsx
 │  │  │     ├─ Select.tsx
-│  │  │     ├─ Skeleton.tsx
-│  │  │     ├─ Spinner.tsx
-│  │  │     └─ Switch.tsx
+│  │  │     ├─ Tabs.tsx
+│  │  │     ├─ Toast.tsx
+│  │  │     ├─ Toggle.tsx
+│  │  │     └─ index.ts
 │  │  ├─ hooks
-│  │  │  └─ useTaskPoller.ts
+│  │  │  ├─ index.ts
+│  │  │  └─ useDebounce.ts
 │  │  ├─ index.css
-│  │  ├─ lib
-│  │  │  ├─ api.ts
-│  │  │  └─ utils.ts
 │  │  ├─ main.tsx
+│  │  ├─ modules
+│  │  │  ├─ AnalyticsModule.tsx
+│  │  │  ├─ CalculatorModule.tsx
+│  │  │  ├─ HistoryModule.tsx
+│  │  │  ├─ PredictionModule.tsx
+│  │  │  └─ index.ts
 │  │  ├─ types
 │  │  │  └─ index.ts
-│  │  └─ vite-env.d.ts
+│  │  └─ utils
+│  │     ├─ clipboardParser.ts
+│  │     ├─ cn.ts
+│  │     ├─ excelParser.ts
+│  │     └─ index.ts
 │  ├─ tsconfig.json
 │  └─ vite.config.ts
 ├─ idef0-A-0 Контекстная диаграмма.drawio.png
@@ -169,9 +188,11 @@ risk-predictor
 │  ├─ features
 │  │  ├─ __init__.py
 │  │  ├─ engineering.py
-│  │  └─ importance.py
+│  │  ├─ importance.py
+│  │  └─ preprocessing.py
 │  ├─ main.py
 │  ├─ model_versions
+│  │  ├─ latest.pkl
 │  │  ├─ model_v1.pkl
 │  │  └─ model_v2.pkl
 │  ├─ models

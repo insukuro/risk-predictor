@@ -10,6 +10,15 @@ import type {
 const USE_MOCK = false;
 
 /**
+ * Интерфейс аргументов для функции расчёта, 
+ * полностью соответствующий новой структуре запроса
+ */
+interface CalculateMetricsArgs {
+  features: FormValues;
+  calculator_id: string;
+}
+
+/**
  * Get calculator metadata for dynamic form generation
  */
 export const getCalculatorMetadata = async (): Promise<CalculatorMetadata> => {
@@ -26,20 +35,28 @@ export const getCalculatorMetadata = async (): Promise<CalculatorMetadata> => {
 };
 
 /**
- * Calculate all metrics
+ * Calculate all metrics (Обновлено под вложенный payload)
  */
 export const calculateAllMetrics = async (
-  data: FormValues
+  args: CalculateMetricsArgs // <-- Теперь функция знает, что принимает объект с фичами и ID
 ): Promise<UIAllMetricsResponse> => {
   try {
-    // Transform form values to API format with Russian aliases
-    const payload: Record<string, any> = {};
+    const { features, calculator_id } = args;
+
+    // Трансформируем и чистим только объект с фичами
+    const cleanedFeatures: Record<string, any> = {};
     
-    Object.entries(data).forEach(([key, value]) => {
+    Object.entries(features).forEach(([key, value]) => {
       if (value !== null && value !== undefined && value !== '') {
-        payload[key] = value;
+        cleanedFeatures[key] = value;
       }
     });
+
+    // Собираем payload, который ждёт ваш обновлённый бэкенд
+    const payload = {
+      features: cleanedFeatures,
+      calculator_id: calculator_id
+    };
     
     const response = await calcApi.post<UIAllMetricsResponse>('/ui/calculate-all', payload);
     return response.data;
@@ -48,7 +65,7 @@ export const calculateAllMetrics = async (
       console.log('[MOCK] Generating mock calculator results');
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      // Calculate actual BMI if weight and height provided
+      const data = args.features;
       const weight = data['Вес (кг)'] as number;
       const height = data['Рост (м)'] as number;
       const results = generateMockCalculatorResults();
@@ -69,10 +86,19 @@ export const calculateAllMetrics = async (
           bmiLabel = 'Ожирение';
         }
         
-        results.metrics.BMI = {
+        // Мапим в ИМТ с русским ключом, если бэк работает на русскоязычных алиасах
+        results.metrics['ИМТ (кг/м²)'] = {
           value: bmi,
           label: `Индекс массы тела: ${bmiLabel}`,
-          level: bmiLevel as 'low' | 'medium' | 'high' | 'danger',
+          level: bmiLevel,
+        };
+      }
+
+      // Имитируем фильтрацию результатов для мока конкретного калькулятора
+      if (args.calculator_id === 'bmi' && results.metrics['ИМТ (кг/м²)']) {
+        return {
+          status: 'success',
+          metrics: { 'ИМТ (кг/м²)': results.metrics['ИМТ (кг/м²)'] }
         };
       }
       
@@ -83,7 +109,7 @@ export const calculateAllMetrics = async (
 };
 
 /**
- * Calculate specific metric (BMI, CCI, EuroSCORE, etc.)
+ * Calculate specific metric via old endpoints (if preserved)
  */
 export const calculateSpecificMetric = async (
   calculator: 'bmi' | 'clcr' | 'cci' | 'euroscore',

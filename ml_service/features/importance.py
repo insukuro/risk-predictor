@@ -3,6 +3,24 @@ import numpy as np
 import pandas as pd
 from ml_service.models.loader import detect_framework
 
+# Таргеты, которые не должны быть в топе входных признаков
+TARGET_FEATURES = {
+    '30-дневная', '1-годичная_x', '1-годичная_y',
+    'Энцефалопатия', 'Диализ / ЗПТ', 'Рестернотомия',
+    'Ревизия гемостаза', 'Медиастинит / ДГНР', 'Пневмония (инф.)',
+    'Пневмония / ДН', 'ОРДС', 'Плеврит / гидроторакс',
+    # Добавьте другие если есть
+}
+
+# Дубликаты - категориальные версии, которые не нужны если есть числовые
+REDUNDANT_FEATURES = {
+    'Пол',              # дубликат "Пол (0=жен,1=муж)"
+    'Срочность',         # дубликат "Срочность (0=план,1=экстр)"
+    'Возрастная группа', # вычисляется из "Возраст (лет)"
+    'Категория ИМТ',     # вычисляется из "ИМТ (кг/м²)"
+}
+
+
 def get_feature_importance(package: Dict) -> Tuple[np.ndarray, np.ndarray]:
     """Универсальное получение важности признаков (Legacy + Ensemble)."""
     feature_names = package['feature_names']
@@ -37,6 +55,7 @@ def get_feature_importance(package: Dict) -> Tuple[np.ndarray, np.ndarray]:
         print(f"⚠️ Could not get feature importance: {e}")
         return feature_names, np.ones(len(feature_names))
 
+
 def get_top_features(package: Dict, top_n: int = 10) -> list:
     """Возвращает топ-N наиболее важных признаков."""
     feature_names, importance = get_feature_importance(package)
@@ -46,3 +65,31 @@ def get_top_features(package: Dict, top_n: int = 10) -> list:
     }).sort_values('importance', ascending=False)
     
     return fi_df.head(top_n)['feature'].tolist()
+
+
+def get_input_top_features(package: Dict, top_n: int = 10) -> list:
+    """
+    Возвращает топ-N входных признаков (без таргетов и дубликатов).
+    Используется для UI - показывает, какие данные нужны от пользователя.
+    """
+    all_top = get_top_features(package, top_n=50)  # Берем больше, чтобы хватило после фильтрации
+    
+    # Фильтруем: убираем таргеты и дубликаты
+    input_features = []
+    for f in all_top:
+        # Пропускаем таргеты
+        if f in TARGET_FEATURES:
+            continue
+        # Пропускаем дубликаты
+        if f in REDUNDANT_FEATURES:
+            continue
+        # Пропускаем "1-годичная..." и "30-дневная" на всякий случай
+        if '1-годичная' in f or '30-дневная' in f:
+            continue
+        
+        input_features.append(f)
+        
+        if len(input_features) >= top_n:
+            break
+    
+    return input_features

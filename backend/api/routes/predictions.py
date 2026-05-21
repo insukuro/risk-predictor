@@ -78,18 +78,19 @@ async def list_predictions(
     return PredictionService.get_predictions_list(db, patient_id, skip, limit)
 
 @router.get("/ui/demo-data")
-async def get_demo_data(version: Optional[str] = Query(None)):
+async def get_demo_data(
+    version: Optional[str] = Query(None), 
+    db: Session = Depends(get_db)
+):
     """
-    Возвращает валидный набор демо-данных для быстрой проверки формы.
+    Возвращает очищенные демо-данные, отфильтрованные строго по 
+    текущей UI-схеме (убирает дубли и неактуальные фичи).
     """
     try:
-        data = await ml_client.get_demo_data(version)
-        # Убеждаемся, что pump всегда есть в демо-данных
-        if "pump (0/1)" not in data:
-            data["pump (0/1)"] = 1
+        data = await PredictionService.get_ui_demo_data(db, version)
         return {"status": "success", "data": data}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Ошибка генерации демо-данных: {str(e)}")
     
 # ==========================================
 # 2. СЛОЙ API (ЧИСТАЯ ЛОГИКА / ИНТЕГРАЦИИ)

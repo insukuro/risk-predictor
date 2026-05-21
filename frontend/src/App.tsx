@@ -7,6 +7,7 @@ import {
   Server,
   CheckCircle,
   XCircle,
+  BarChart2,
 } from 'lucide-react';
 import { Tabs } from './components/ui/Tabs';
 import { ToastProvider } from './components/ui/Toast';
@@ -15,6 +16,7 @@ import { HistoryModule } from './modules/HistoryModule';
 import { CalculatorModule } from './modules/CalculatorModule';
 import { checkHealth } from './api/predictions';
 import { cn } from './utils/cn';
+import { AnalyticsModule } from './modules/AnalyticsModule';
 
 const tabs = [
   {
@@ -22,16 +24,24 @@ const tabs = [
     label: 'ML-Прогноз',
     icon: <Activity className="h-4 w-4" />,
   },
+
   {
+    id: 'calculator',
+    label: 'Калькуляторы',
+    icon: <Calculator className="h-4 w-4" />,
+    
+  },
+    {
     id: 'history',
     label: 'Архив',
     icon: <History className="h-4 w-4" />,
   },
   {
-    id: 'calculator',
-    label: 'Калькуляторы',
-    icon: <Calculator className="h-4 w-4" />,
-  },
+    id: 'analytics',
+    label: 'Аналитика',
+    icon: <BarChart2 className="h-4 w-4" />,
+    component: <AnalyticsModule />,
+}
 ];
 
 const App: React.FC = () => {
@@ -70,7 +80,7 @@ const App: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-slate-900">
-                  CardioRisk AI
+                  Risk Predictor
                 </h1>
                 <p className="text-xs text-slate-500">
                   Система прогнозирования рисков
@@ -131,10 +141,10 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-slate-500">
             <p>
-              © {new Date().getFullYear()} CardioRisk AI — Система прогнозирования сердечно-сосудистых рисков
+              © {new Date().getFullYear()} Risk Predictor — Система прогнозирования сердечно-сосудистых рисков
             </p>
             <p className="text-xs">
-              Версия 1.0.0 • Для медицинского использования
+              Версия 2.0.0 • Для медицинского использования
             </p>
           </div>
         </div>

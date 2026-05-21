@@ -1,9 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
-// API Base URLs
-const MAIN_API_URL = 'http://localhost:8000';
-const CALC_API_URL = 'http://localhost:8005';
-
+export const MAIN_API_URL = '/api';
+export const CALC_API_URL = '/calc';
 // Create axios instances
 export const mainApi: AxiosInstance = axios.create({
   baseURL: MAIN_API_URL,
