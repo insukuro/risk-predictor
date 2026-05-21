@@ -8,6 +8,8 @@ import type {
   FormValues,
 } from '../types';
 
+type HealthResponse = { status: string };
+
 // Enable mock mode when API is unavailable
 const USE_MOCK = false;
 
@@ -120,9 +122,11 @@ export const getDemoData = async (): Promise<FormValues> => {
  */
 export const checkHealth = async (): Promise<boolean> => {
   try {
-    const response = await mainApi.get('/health');
-    return response.data?.status === 'healthy';
-  } catch {
+    const response = await mainApi.get<HealthResponse>('/health');
+    // Проверяем что статус 200 и ответ содержит status: "ok"
+    return response.status === 200 && response.data?.status === 'ok';
+  } catch (error) {
+    console.error('Health check failed:', error);
     return false;
   }
 };

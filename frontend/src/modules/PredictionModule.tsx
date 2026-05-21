@@ -13,56 +13,99 @@ import type { SchemaResponse, FormValues, PredictResponse, UIField } from '../ty
 
 type ViewState = 'form' | 'loading' | 'result';
 
+
 // Умный преобразователь значений на основе типа поля
 const smartValueConverter = (value: any, field: UIField): any => {
-  if (value == null) return null; // Исправлено: было value = null
+  if (value === null || value === undefined) return null;
 
   switch (field.type) {
     case 'number': {
       if (typeof value === 'number') return value;
       if (typeof value === 'string') {
-        const cleaned = value.trim().replace(',', '.');
-        const num = parseFloat(cleaned);
+        const cleaned = value.toString().trim();
+        
+        // Специальная обработка римских цифр для ХСН стадии
+        const romanMap: Record<string, number> = {
+          'I': 1, 'II': 2, 'III': 3, 'IV': 4,
+          'i': 1, 'ii': 2, 'iii': 3, 'iv': 4
+        };
+        if (romanMap[cleaned] !== undefined) {
+          return romanMap[cleaned];
+        }
+        
+        // Обычное числовое преобразование
+        const normalized = cleaned.replace(',', '.');
+        const num = parseFloat(normalized);
         return isNaN(num) ? null : num;
       }
-      return null;
+      const num = Number(value);
+      return isNaN(num) ? null : num;
     }
+    
     case 'boolean': {
       if (typeof value === 'number') return value ? 1 : 0;
       if (typeof value === 'boolean') return value ? 1 : 0;
       if (typeof value === 'string') {
         const lower = value.trim().toLowerCase();
-        if (['1', 'true', 'да', 'yes', 'муж', 'есть', 'включено'].includes(lower)) return 1;
-        if (['0', 'false', 'нет', 'no', 'жен', 'отсутствует', 'выключено'].includes(lower)) return 0;
+        if (['1', 'true', 'да', 'yes', 'муж', 'есть', 'включено', 'on'].includes(lower)) return 1;
+        if (['0', 'false', 'нет', 'no', 'жен', 'отсутствует', 'выключено', 'off'].includes(lower)) return 0;
         const num = parseInt(lower, 10);
         if (!isNaN(num)) return num ? 1 : 0;
         return 0;
       }
       return 0;
     }
+    
     case 'select': {
-      if (typeof value === 'number' || typeof value === 'string') { // Исправлено: было =
-        const optionExists = field.options?.some(opt => 
-          opt.value == value || String(opt.value) === String(value) // Исправлено
+      // Пробуем найти значение по label (текстовому описанию)
+      if (typeof value === 'string' && field.options) {
+        const trimmedValue = value.trim();
+        
+        // Поиск точного совпадения с label
+        const matchedByLabel = field.options.find(opt => 
+          opt.label.toLowerCase() === trimmedValue.toLowerCase()
         );
-        if (optionExists) return value;
+        if (matchedByLabel) return matchedByLabel.value;
         
-        if (field.options) {
-          const matchedOption = field.options.find(opt => 
-            opt.label.toLowerCase() === String(value).toLowerCase()
-          );
-          if (matchedOption) return matchedOption.value;
-        }
+        // Поиск частичного совпадения (например "Тяжелая дисфункция" в "Тяжелая дисфункция (<30%)")
+        const matchedByPartialLabel = field.options.find(opt => 
+          trimmedValue.toLowerCase().includes(opt.label.toLowerCase()) ||
+          opt.label.toLowerCase().includes(trimmedValue.toLowerCase())
+        );
+        if (matchedByPartialLabel) return matchedByPartialLabel.value;
         
-        if (typeof value === 'string') {
-          const num = parseFloat(value);
-          if (!isNaN(num) && field.options?.some(opt => opt.value === num)) {
-            return num;
+        // Поиск по ключевым словам для ФВ ЛЖ
+        const efMap: Record<string, number> = {
+          'нормальная': 1, 'норма': 1, 'сохраненная': 1, '>=50': 1,
+          'умеренно': 2, 'умеренная': 2, '30-49': 2, 'сниженная': 2, 'снижена': 2,
+          'тяжелая': 3, 'низкая': 3, '<30': 3, 'тяжёлая': 3
+        };
+        
+        const lowerValue = trimmedValue.toLowerCase();
+        for (const [keyword, mappedValue] of Object.entries(efMap)) {
+          if (lowerValue.includes(keyword)) {
+            const optionExists = field.options?.some(opt => opt.value === mappedValue);
+            if (optionExists) return mappedValue;
           }
         }
+        
+        // Пробуем преобразовать строку в число если options числовые
+        const numValue = parseFloat(trimmedValue);
+        if (!isNaN(numValue)) {
+          const optionExists = field.options?.some(opt => opt.value === numValue);
+          if (optionExists) return numValue;
+        }
       }
-      return value;
+      
+      // Если это уже число - проверяем что оно есть в options
+      if (typeof value === 'number') {
+        const optionExists = field.options?.some(opt => opt.value === value);
+        if (optionExists) return value;
+      }
+      
+      return value; // Возвращаем как есть если не смогли преобразовать
     }
+    
     default:
       return value;
   }
@@ -149,49 +192,92 @@ export const PredictionModule: React.FC = () => {
     }
   };
 
-  const smartDataImport = useCallback((rawData: Record<string, any>) => {
-    const fields = getAllFields();
-    const parsedData: FormValues = {};
-    const newErrors: Record<string, string> = {};
-    const fieldMap = new Map(fields.map(f => [f.id, f]));
-    const fieldAliases = new Map<string, UIField>();
 
-    fields.forEach(f => {
-      const normalizedId = f.id.toLowerCase().replace(/[^a-zа-я0-9]/g, '');
-      fieldAliases.set(normalizedId, f);
-      if (f.label) {
-        const normalizedLabel = f.label.toLowerCase().replace(/[^a-zа-я0-9]/g, '');
-        fieldAliases.set(normalizedLabel, f);
-      }
-    });
-
-    Object.entries(rawData).forEach(([key, value]) => {
-      let field = fieldMap.get(key);
-      if (!field) {
-        const normalizedKey = key.toLowerCase().replace(/[^a-zа-я0-9]/g, '');
-        field = fieldAliases.get(normalizedKey);
-      }
-      if (field) {
-        const convertedValue = smartValueConverter(value, field);
-        parsedData[field.id] = convertedValue;
-        const validation = validateFieldValue(convertedValue, field);
-        if (!validation.valid && validation.error) {
-          newErrors[field.id] = validation.error;
-        }
-      } else {
-        console.warn(`Unknown field in import: ${key}`);
-      }
-    });
-
-    setFormValues(prev => ({ ...prev, ...parsedData }));
-    setFormErrors(prev => ({ ...prev, ...newErrors }));
+// Улучшенный импорт с маппингом названий полей
+const smartDataImport = useCallback((rawData: Record<string, any>) => {
+  const fields = getAllFields();
+  const parsedData: FormValues = {};
+  const newErrors: Record<string, string> = {};
+  const fieldMap = new Map(fields.map(f => [f.id, f]));
+  
+  // Создаем расширенный маппинг для несовпадающих названий полей
+  const fieldAliases = new Map<string, UIField>();
+  
+  // Ручной маппинг известных расхождений
+  const knownMappings: Record<string, string> = {
+    'Креатинин до операции (мкмоль/л)': 'Креатинин в ОРИТ (мкмоль/л)',
+    'Креатинин до операции': 'Креатинин в ОРИТ (мкмоль/л)',
+    'Мочевина до операции (ммоль/л)': 'Мочевина в ОРИТ (ммоль/л)',
+    'Hb до операции (г/л)': 'Hb в ОРИТ (г/л)',
+    'Ht до операции (%)': 'Ht в ОРИТ (%)',
+    'Глюкоза до операции (ммоль/л)': 'Глюкоза в ОРИТ (ммоль/л)',
+    'K+ до операции (ммоль/л)': 'K+ в ОРИТ (ммоль/л)',
+    'Число коморбидностей': 'Число коморбидностей',
+  };
+  
+  // Заполняем алиасы
+  fields.forEach(f => {
+    // По ID поля (нормализованный)
+    const normalizedId = f.id.toLowerCase().replace(/[^a-zа-я0-9]/g, '');
+    fieldAliases.set(normalizedId, f);
     
-    return {
-      imported: Object.keys(parsedData).length,
-      total: fields.length,
-      errors: Object.keys(newErrors).length
-    };
-  }, [getAllFields]);
+    // По label
+    if (f.label) {
+      const normalizedLabel = f.label.toLowerCase().replace(/[^a-zа-я0-9]/g, '');
+      fieldAliases.set(normalizedLabel, f);
+    }
+    
+    // Добавляем обратный маппинг из knownMappings
+    Object.entries(knownMappings).forEach(([demoKey, fieldId]) => {
+      if (fieldId === f.id) {
+        const normalizedDemoKey = demoKey.toLowerCase().replace(/[^a-zа-я0-9]/g, '');
+        fieldAliases.set(normalizedDemoKey, f);
+      }
+    });
+  });
+
+  // Обрабатываем каждое поле из демо-данных
+  Object.entries(rawData).forEach(([key, value]) => {
+    let field = fieldMap.get(key);
+    
+    if (!field) {
+      // Пробуем найти через алиасы
+      const normalizedKey = key.toLowerCase().replace(/[^a-zа-я0-9]/g, '');
+      field = fieldAliases.get(normalizedKey);
+    }
+    
+    if (!field) {
+      // Проверяем knownMappings
+      const mappedFieldId = knownMappings[key];
+      if (mappedFieldId) {
+        field = fieldMap.get(mappedFieldId);
+      }
+    }
+    
+    if (field) {
+      console.log(`Mapping demo field "${key}" → form field "${field.id}" with value:`, value);
+      const convertedValue = smartValueConverter(value, field);
+      console.log(`  Converted to:`, convertedValue, `(type: ${typeof convertedValue})`);
+      parsedData[field.id] = convertedValue;
+      
+      const validation = validateFieldValue(convertedValue, field);
+      if (!validation.valid && validation.error) {
+        newErrors[field.id] = validation.error;
+      }
+    } else {
+      console.warn(`No matching form field found for demo key: "${key}"`);
+    }
+  });
+
+  setFormValues(prev => ({ ...prev, ...parsedData }));
+  setFormErrors(prev => ({ ...prev, ...newErrors }));
+  
+  return {
+    imported: Object.keys(parsedData).length,
+    total: fields.length,
+    errors: Object.keys(newErrors).length
+  };
+}, [getAllFields]);
 
   const handleDataImport = (data: FormValues) => {
     const result = smartDataImport(data);

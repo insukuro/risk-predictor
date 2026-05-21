@@ -70,7 +70,7 @@ const App: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-slate-900">
-                  CardioRisk AI
+                  Risk Predictor
                 </h1>
                 <p className="text-xs text-slate-500">
                   Система прогнозирования рисков
@@ -131,10 +131,10 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-slate-500">
             <p>
-              © {new Date().getFullYear()} CardioRisk AI — Система прогнозирования сердечно-сосудистых рисков
+              © {new Date().getFullYear()} Risk Predictor — Система прогнозирования сердечно-сосудистых рисков
             </p>
             <p className="text-xs">
-              Версия 1.0.0 • Для медицинского использования
+              Версия 2.0.0 • Для медицинского использования
             </p>
           </div>
         </div>
