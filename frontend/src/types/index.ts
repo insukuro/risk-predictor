@@ -128,17 +128,6 @@ export interface PatientCreate {
   birth_date: string;
 }
 
-// =====================
-// Operation Types
-// =====================
-
-export interface Operation {
-  id: number;
-  patient_id: number;
-  type: string;
-  date: string;
-  created_at: string;
-}
 
 // =====================
 // Form State Types
@@ -175,4 +164,38 @@ export interface ClipboardParseResult {
   filledFields: number;
   totalFields: number;
   values: Record<string, any>;
+}
+
+// types/index.ts — добавить к существующим типам
+
+// Duplicate Patient interface removed to avoid conflicting declarations.
+
+export interface Operation {
+  id: number;
+  patient_id: number;
+  type: string;
+  date: string;
+  created_at?: string;
+}
+
+
+
+export interface OperationCreate {
+  patient_id: number;
+  type: string;
+  date: string;
+}
+
+export type PredictionMode = 'test' | 'patient';
+
+export interface AnalyticsSummary {
+  total_operations: number;
+  by_type: Record<string, number>;
+  risk_distribution: Record<string, number>;
+  date_range?: { from: string; to: string };
+}
+
+export interface AgeDistribution {
+  age_group: string;
+  count: number;
 }

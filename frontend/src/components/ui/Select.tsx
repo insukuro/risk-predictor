@@ -10,7 +10,7 @@ interface SelectOption {
 interface SelectProps {
   label?: string;
   options: SelectOption[];
-  value: number | string | undefined;
+  value: number | string | undefined | null;
   onChange: (value: number | string) => void;
   placeholder?: string;
   error?: string;
@@ -28,6 +28,9 @@ export const Select: React.FC<SelectProps> = ({
   disabled,
   className,
 }) => {
+  const normalizedValue =
+    value === null || value === undefined ? '' : String(value);
+
   return (
     <div className="w-full">
       {label && (
@@ -35,14 +38,17 @@ export const Select: React.FC<SelectProps> = ({
           {label}
         </label>
       )}
+
       <div className="relative">
         <select
-          value={value ?? ''}
+          value={normalizedValue}
           onChange={(e) => {
-            const val = e.target.value;
-            // Try to parse as number
-            const numVal = parseFloat(val);
-            onChange(isNaN(numVal) ? val : numVal);
+            const rawValue = e.target.value;
+            const matchedOption = options.find(
+              (option) => String(option.value) === rawValue
+            );
+
+            onChange(matchedOption ? matchedOption.value : rawValue);
           }}
           disabled={disabled}
           className={cn(
@@ -58,14 +64,17 @@ export const Select: React.FC<SelectProps> = ({
           <option value="" disabled>
             {placeholder}
           </option>
+
           {options.map((option) => (
-            <option key={option.value} value={option.value}>
+            <option key={String(option.value)} value={String(option.value)}>
               {option.label}
             </option>
           ))}
         </select>
+
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
       </div>
+
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   );

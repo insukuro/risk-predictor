@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Clipboard, RefreshCw, Send } from 'lucide-react';
+import { Clipboard, RefreshCw, Send, FlaskConical, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
@@ -7,111 +7,71 @@ import { toast } from '../components/ui/Toast';
 import { DropZone } from '../components/DropZone';
 import { DynamicForm } from '../components/DynamicForm';
 import { ResultDisplay } from '../components/ResultDisplay';
+import { ModeSelector } from '../components/ModeSelector';
+import { PatientSelector } from '../components/PatientSelector';
 import { getUISchema, submitPrediction, getDemoData } from '../api/predictions';
 import { parseClipboardText, validateFieldValue } from '../utils/clipboardParser';
-import type { SchemaResponse, FormValues, PredictResponse, UIField } from '../types';
+import type {
+  SchemaResponse, FormValues, PredictResponse,
+  UIField, PredictionMode, Patient,
+} from '../types';
 
 type ViewState = 'form' | 'loading' | 'result';
 
-
-// Умный преобразователь значений на основе типа поля
+// ─── Умный преобразователь значений ───
 const smartValueConverter = (value: any, field: UIField): any => {
   if (value === null || value === undefined) return null;
-
   switch (field.type) {
     case 'number': {
       if (typeof value === 'number') return value;
-      if (typeof value === 'string') {
-        const cleaned = value.toString().trim();
-        
-        // Специальная обработка римских цифр для ХСН стадии
-        const romanMap: Record<string, number> = {
-          'I': 1, 'II': 2, 'III': 3, 'IV': 4,
-          'i': 1, 'ii': 2, 'iii': 3, 'iv': 4
-        };
-        if (romanMap[cleaned] !== undefined) {
-          return romanMap[cleaned];
-        }
-        
-        // Обычное числовое преобразование
-        const normalized = cleaned.replace(',', '.');
-        const num = parseFloat(normalized);
-        return isNaN(num) ? null : num;
-      }
-      const num = Number(value);
+      const cleaned = value.toString().trim();
+      const romanMap: Record<string, number> = {
+        'I': 1, 'II': 2, 'III': 3, 'IV': 4,
+        'i': 1, 'ii': 2, 'iii': 3, 'iv': 4,
+      };
+      if (romanMap[cleaned] !== undefined) return romanMap[cleaned];
+      const num = parseFloat(cleaned.replace(',', '.'));
       return isNaN(num) ? null : num;
     }
-    
     case 'boolean': {
       if (typeof value === 'number') return value ? 1 : 0;
       if (typeof value === 'boolean') return value ? 1 : 0;
       if (typeof value === 'string') {
         const lower = value.trim().toLowerCase();
-        if (['1', 'true', 'да', 'yes', 'муж', 'есть', 'включено', 'on'].includes(lower)) return 1;
-        if (['0', 'false', 'нет', 'no', 'жен', 'отсутствует', 'выключено', 'off'].includes(lower)) return 0;
-        const num = parseInt(lower, 10);
-        if (!isNaN(num)) return num ? 1 : 0;
+        if (['1','true','да','yes','муж','есть','включено','on'].includes(lower)) return 1;
         return 0;
       }
       return 0;
     }
-    
     case 'select': {
-      // Пробуем найти значение по label (текстовому описанию)
       if (typeof value === 'string' && field.options) {
-        const trimmedValue = value.trim();
-        
-        // Поиск точного совпадения с label
-        const matchedByLabel = field.options.find(opt => 
-          opt.label.toLowerCase() === trimmedValue.toLowerCase()
+        const trimmed = value.trim();
+        const byLabel = field.options.find(
+          o => o.label.toLowerCase() === trimmed.toLowerCase()
         );
-        if (matchedByLabel) return matchedByLabel.value;
-        
-        // Поиск частичного совпадения (например "Тяжелая дисфункция" в "Тяжелая дисфункция (<30%)")
-        const matchedByPartialLabel = field.options.find(opt => 
-          trimmedValue.toLowerCase().includes(opt.label.toLowerCase()) ||
-          opt.label.toLowerCase().includes(trimmedValue.toLowerCase())
+        if (byLabel) return byLabel.value;
+        const byPartial = field.options.find(
+          o =>
+            trimmed.toLowerCase().includes(o.label.toLowerCase()) ||
+            o.label.toLowerCase().includes(trimmed.toLowerCase())
         );
-        if (matchedByPartialLabel) return matchedByPartialLabel.value;
-        
-        // Поиск по ключевым словам для ФВ ЛЖ
-        const efMap: Record<string, number> = {
-          'нормальная': 1, 'норма': 1, 'сохраненная': 1, '>=50': 1,
-          'умеренно': 2, 'умеренная': 2, '30-49': 2, 'сниженная': 2, 'снижена': 2,
-          'тяжелая': 3, 'низкая': 3, '<30': 3, 'тяжёлая': 3
-        };
-        
-        const lowerValue = trimmedValue.toLowerCase();
-        for (const [keyword, mappedValue] of Object.entries(efMap)) {
-          if (lowerValue.includes(keyword)) {
-            const optionExists = field.options?.some(opt => opt.value === mappedValue);
-            if (optionExists) return mappedValue;
-          }
-        }
-        
-        // Пробуем преобразовать строку в число если options числовые
-        const numValue = parseFloat(trimmedValue);
-        if (!isNaN(numValue)) {
-          const optionExists = field.options?.some(opt => opt.value === numValue);
-          if (optionExists) return numValue;
-        }
+        if (byPartial) return byPartial.value;
+        const numVal = parseFloat(trimmed);
+        if (!isNaN(numVal) && field.options?.some(o => o.value === numVal))
+          return numVal;
       }
-      
-      // Если это уже число - проверяем что оно есть в options
-      if (typeof value === 'number') {
-        const optionExists = field.options?.some(opt => opt.value === value);
-        if (optionExists) return value;
-      }
-      
-      return value; // Возвращаем как есть если не смогли преобразовать
+      if (typeof value === 'number' && field.options?.some(o => o.value === value))
+        return value;
+      return value;
     }
-    
     default:
       return value;
   }
 };
 
+
 export const PredictionModule: React.FC = () => {
+  // ─── State ───
   const [schema, setSchema] = useState<SchemaResponse | null>(null);
   const [schemaLoading, setSchemaLoading] = useState(true);
   const [schemaError, setSchemaError] = useState<string | null>(null);
@@ -122,11 +82,18 @@ export const PredictionModule: React.FC = () => {
   const [result, setResult] = useState<PredictResponse | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  useEffect(() => {
-    loadSchema();
-  }, []);
+  // Режим
+  const [predictionMode, setPredictionMode] = useState<PredictionMode>('test');
+  const [selectedOperationId, setSelectedOperationId] = useState<number | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 
-  const loadSchema = async (version?: string, keepValues: boolean = false) => {
+  // Поллинг
+  const [pollProgress, setPollProgress] = useState<{ attempt: number; max: number } | null>(null);
+
+  // ─── Загрузка схемы ───
+  useEffect(() => { loadSchema(); }, []);
+
+  const loadSchema = async (version?: string, keepValues = false) => {
     setSchemaLoading(true);
     setSchemaError(null);
     try {
@@ -142,25 +109,24 @@ export const PredictionModule: React.FC = () => {
     }
   };
 
-  const initializeForm = (schemaData: SchemaResponse, keepExistingValues: boolean = false) => {
-    if (keepExistingValues) {
-      const updatedValues: FormValues = { ...formValues };
-      schemaData.ui_schema.form_blocks.forEach(block => {
+  const initializeForm = (schemaData: SchemaResponse, keepExisting = false) => {
+    if (keepExisting) {
+      const updated: FormValues = { ...formValues };
+      schemaData.ui_schema.form_blocks.forEach(block =>
         block.fields.forEach(field => {
-          if (!(field.id in updatedValues)) {
-            updatedValues[field.id] = field.type === 'boolean' ? 0 : null;
-          }
-        });
-      });
-      setFormValues(updatedValues);
+          if (!(field.id in updated))
+            updated[field.id] = field.type === 'boolean' ? 0 : null;
+        })
+      );
+      setFormValues(updated);
     } else {
-      const initialValues: FormValues = {};
-      schemaData.ui_schema.form_blocks.forEach(block => {
+      const initial: FormValues = {};
+      schemaData.ui_schema.form_blocks.forEach(block =>
         block.fields.forEach(field => {
-          initialValues[field.id] = field.type === 'boolean' ? 0 : null;
-        });
-      });
-      setFormValues(initialValues);
+          initial[field.id] = field.type === 'boolean' ? 0 : null;
+        })
+      );
+      setFormValues(initial);
     }
     setFormErrors({});
   };
@@ -179,31 +145,23 @@ export const PredictionModule: React.FC = () => {
     setFormValues(prev => ({ ...prev, [fieldId]: value }));
     const field = getAllFields().find(f => f.id === fieldId);
     if (field) {
-      const validation = validateFieldValue(value, field);
-      if (!validation.valid) {
-        setFormErrors(prev => ({ ...prev, [fieldId]: validation.error || '' }));
+      const v = validateFieldValue(value, field);
+      if (!v.valid) {
+        setFormErrors(prev => ({ ...prev, [fieldId]: v.error || '' }));
       } else {
-        setFormErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors[fieldId];
-          return newErrors;
-        });
+        setFormErrors(prev => { const n = { ...prev }; delete n[fieldId]; return n; });
       }
     }
   };
 
-
-// Улучшенный импорт с маппингом названий полей
 const smartDataImport = useCallback((rawData: Record<string, any>) => {
   const fields = getAllFields();
   const parsedData: FormValues = {};
   const newErrors: Record<string, string> = {};
   const fieldMap = new Map(fields.map(f => [f.id, f]));
-  
-  // Создаем расширенный маппинг для несовпадающих названий полей
+
   const fieldAliases = new Map<string, UIField>();
-  
-  // Ручной маппинг известных расхождений
+
   const knownMappings: Record<string, string> = {
     'Креатинин до операции (мкмоль/л)': 'Креатинин в ОРИТ (мкмоль/л)',
     'Креатинин до операции': 'Креатинин в ОРИТ (мкмоль/л)',
@@ -212,22 +170,17 @@ const smartDataImport = useCallback((rawData: Record<string, any>) => {
     'Ht до операции (%)': 'Ht в ОРИТ (%)',
     'Глюкоза до операции (ммоль/л)': 'Глюкоза в ОРИТ (ммоль/л)',
     'K+ до операции (ммоль/л)': 'K+ в ОРИТ (ммоль/л)',
-    'Число коморбидностей': 'Число коморбидностей',
   };
-  
-  // Заполняем алиасы
-  fields.forEach(f => {
-    // По ID поля (нормализованный)
+
+  fields.forEach((f) => {
     const normalizedId = f.id.toLowerCase().replace(/[^a-zа-я0-9]/g, '');
     fieldAliases.set(normalizedId, f);
-    
-    // По label
+
     if (f.label) {
       const normalizedLabel = f.label.toLowerCase().replace(/[^a-zа-я0-9]/g, '');
       fieldAliases.set(normalizedLabel, f);
     }
-    
-    // Добавляем обратный маппинг из knownMappings
+
     Object.entries(knownMappings).forEach(([demoKey, fieldId]) => {
       if (fieldId === f.id) {
         const normalizedDemoKey = demoKey.toLowerCase().replace(/[^a-zа-я0-9]/g, '');
@@ -236,186 +189,313 @@ const smartDataImport = useCallback((rawData: Record<string, any>) => {
     });
   });
 
-  // Обрабатываем каждое поле из демо-данных
   Object.entries(rawData).forEach(([key, value]) => {
     let field = fieldMap.get(key);
-    
+
     if (!field) {
-      // Пробуем найти через алиасы
       const normalizedKey = key.toLowerCase().replace(/[^a-zа-я0-9]/g, '');
       field = fieldAliases.get(normalizedKey);
     }
-    
+
     if (!field) {
-      // Проверяем knownMappings
       const mappedFieldId = knownMappings[key];
       if (mappedFieldId) {
         field = fieldMap.get(mappedFieldId);
       }
     }
-    
-    if (field) {
-      console.log(`Mapping demo field "${key}" → form field "${field.id}" with value:`, value);
-      const convertedValue = smartValueConverter(value, field);
-      console.log(`  Converted to:`, convertedValue, `(type: ${typeof convertedValue})`);
-      parsedData[field.id] = convertedValue;
-      
-      const validation = validateFieldValue(convertedValue, field);
-      if (!validation.valid && validation.error) {
-        newErrors[field.id] = validation.error;
-      }
-    } else {
+
+    if (!field) {
       console.warn(`No matching form field found for demo key: "${key}"`);
+      return;
+    }
+
+    const convertedValue = smartValueConverter(value, field);
+
+    console.log(
+      `[DEMO IMPORT] "${key}" -> "${field.id}" raw=`,
+      value,
+      ' converted=',
+      convertedValue
+    );
+
+    parsedData[field.id] = convertedValue;
+
+    const validation = validateFieldValue(convertedValue, field);
+    if (!validation.valid && validation.error) {
+      newErrors[field.id] = validation.error;
     }
   });
 
-  setFormValues(prev => ({ ...prev, ...parsedData }));
-  setFormErrors(prev => ({ ...prev, ...newErrors }));
-  
+  setFormValues((prev) => ({ ...prev, ...parsedData }));
+
+  // ВАЖНО: удаляем старые ошибки у импортированных полей,
+  // потом ставим только актуальные newErrors
+  setFormErrors((prev) => {
+    const next = { ...prev };
+
+    Object.keys(parsedData).forEach((fieldId) => {
+      delete next[fieldId];
+    });
+
+    Object.entries(newErrors).forEach(([fieldId, error]) => {
+      next[fieldId] = error;
+    });
+
+    return next;
+  });
+
   return {
     imported: Object.keys(parsedData).length,
     total: fields.length,
-    errors: Object.keys(newErrors).length
+    errors: Object.keys(newErrors).length,
   };
 }, [getAllFields]);
-
   const handleDataImport = (data: FormValues) => {
-    const result = smartDataImport(data);
-    toast.success(`Импортировано полей: ${result.imported} из ${result.total}`);
+    const r = smartDataImport(data);
+    toast.success(`Импортировано полей: ${r.imported} из ${r.total}`);
   };
 
   const handleClipboardPaste = async () => {
     try {
-      const parseResult = await parseClipboardText(getAllFields());
-      if (!parseResult.success) {
-        toast.warning('Буфер обмена пуст или данные не распознаны');
-        return;
-      }
-      const result = smartDataImport(parseResult.values);
-      toast.success(`Успешно заполнено ${result.imported} из ${result.total} полей`);
-    } catch (error) {
-      toast.error('Ошибка чтения буфера обмена. Разрешите доступ к буферу.');
-    }
+      const pr = await parseClipboardText(getAllFields());
+      if (!pr.success) { toast.warning('Буфер обмена пуст'); return; }
+      const r = smartDataImport(pr.values);
+      toast.success(`Заполнено ${r.imported} из ${r.total} полей`);
+    } catch { toast.error('Ошибка чтения буфера обмена'); }
   };
 
   const handleLoadDemo = async () => {
     try {
-      const apiResponse = await getDemoData();
-      let demoData: Record<string, any> = {};
-      
-      if (apiResponse?.data && typeof apiResponse.data === 'object' && !Array.isArray(apiResponse.data)) {
-        demoData = apiResponse.data;
-      } else if (apiResponse?.status === 'success') {
-        const { status, ...rest } = apiResponse;
-        demoData = rest;
-      } else if (apiResponse && typeof apiResponse === 'object' && !Array.isArray(apiResponse)) {
-        demoData = apiResponse;
-      }
-
-      if (Object.keys(demoData).length === 0) {
-        toast.error('Демо-данные пусты или имеют неверный формат');
-        return;
-      }
-      
-      const result = smartDataImport(demoData);
-      if (result.imported === 0) {
-        toast.warning('Не удалось сопоставить демо-данные с полями формы');
-      } else {
-        toast.success(`Демо-данные загружены (${result.imported} полей из ${result.total})`);
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Ошибка загрузки демо-данных');
-    }
+      const apiResp = await getDemoData();
+      let demo: Record<string, any> = {};
+      if (apiResp?.data && typeof apiResp.data === 'object' && !Array.isArray(apiResp.data))
+        demo = apiResp.data;
+      else if (apiResp && typeof apiResp === 'object')
+        demo = apiResp as Record<string, any>;
+      if (Object.keys(demo).length === 0) { toast.error('Демо-данные пусты'); return; }
+      const r = smartDataImport(demo);
+      r.imported === 0
+        ? toast.warning('Не удалось сопоставить данные')
+        : toast.success(`Демо-данные загружены (${r.imported} из ${r.total})`);
+    } catch (e: any) { toast.error(e.message || 'Ошибка'); }
   };
 
   const handleClearForm = () => {
-    if (schema) {
-      initializeForm(schema, false);
-      toast.info('Форма очищена');
-    }
+    if (schema) { initializeForm(schema, false); toast.info('Форма очищена'); }
+  };
+
+  const handleModeChange = (mode: PredictionMode) => {
+    setPredictionMode(mode);
+    if (mode === 'test') { setSelectedOperationId(null); setSelectedPatient(null); }
   };
 
   const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    let isValid = true;
-    getAllFields().forEach(field => {
-      const validation = validateFieldValue(formValues[field.id], field);
-      if (!validation.valid && validation.error) {
-        newErrors[field.id] = validation.error;
-        isValid = false;
-      }
+    const ne: Record<string, string> = {};
+    let ok = true;
+    getAllFields().forEach(f => {
+      const v = validateFieldValue(formValues[f.id], f);
+      if (!v.valid && v.error) { ne[f.id] = v.error; ok = false; }
     });
-    setFormErrors(newErrors);
-    return isValid;
+    setFormErrors(ne);
+    return ok;
   };
 
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      toast.error('Исправьте ошибки в форме');
-      return;
+  const normalizeFieldValueForSubmit = (field: UIField, value: any) => {
+  switch (field.type) {
+    case 'boolean':
+      return value === 1 || value === true || value === '1' ? 1 : 0;
+
+    case 'number': {
+      if (typeof value === 'number') {
+        return Number.isNaN(value) ? null : value;
+      }
+
+      if (typeof value === 'string') {
+        const normalized = value.replace(',', '.').trim();
+        const num = Number(normalized);
+        return Number.isNaN(num) ? null : num;
+      }
+
+      const num = Number(value);
+      return Number.isNaN(num) ? null : num;
     }
-    setSubmitLoading(true);
-    setViewState('loading');
-    
-    try {
-      const calculatedFields = schema?.ui_schema.calculated_metrics_needed || [];
-      const features: Record<string, any> = {};
-      let hasMissingFields = false;
-      const newErrors: Record<string, string> = {};
 
-      getAllFields().forEach(field => {
-        if (calculatedFields.includes(field.id)) return;
-        const value = formValues[field.id];
-        
-        if (value == null || value === '' || Number.isNaN(value as any)) {
-          newErrors[field.id] = 'Поле обязательно для заполнения';
-          hasMissingFields = true;
-        } else {
-          features[field.id] = field.type === 'boolean' ? Boolean(value) : Number(value);
-        }
-      });
+    case 'select': {
+      const matchedOption = field.options?.find(
+        (opt) => String(opt.value) === String(value)
+      );
+      return matchedOption ? matchedOption.value : value;
+    }
 
-      if (hasMissingFields) {
-        setFormErrors(prev => ({ ...prev, ...newErrors }));
-        toast.error('Пожалуйста, заполните все обязательные поля');
-        setViewState('form');
-        setSubmitLoading(false);
+    default:
+      return value;
+  }
+};
+  // ─────────────────────────────────────────────────────
+  // SUBMIT с поддержкой поллинга
+  // ─────────────────────────────────────────────────────
+const handleSubmit = async () => {
+  if (predictionMode === 'patient' && !selectedOperationId) {
+    toast.error('Выберите операцию пациента для сохранения прогноза');
+    return;
+  }
+
+  if (!validateForm()) {
+    toast.error('Исправьте ошибки в форме');
+    return;
+  }
+
+  setSubmitLoading(true);
+  setViewState('loading');
+  setPollProgress(null);
+
+  try {
+    const calculatedFields = schema?.ui_schema.calculated_metrics_needed || [];
+    const features: Record<string, any> = {};
+    let hasMissing = false;
+    const newErrors: Record<string, string> = {};
+
+    getAllFields().forEach((field) => {
+      if (calculatedFields.includes(field.id)) return;
+
+      const rawValue = formValues[field.id];
+      const normalizedValue = normalizeFieldValueForSubmit(field, rawValue);
+
+      const isMissing =
+        rawValue === null ||
+        rawValue === undefined ||
+        rawValue === '' ||
+        (field.type === 'number' && normalizedValue === null) ||
+        (field.type === 'select' &&
+          (normalizedValue === null ||
+            normalizedValue === undefined ||
+            normalizedValue === ''));
+
+      if (isMissing) {
+        newErrors[field.id] = 'Поле обязательно';
+        hasMissing = true;
         return;
       }
 
-      const response = await submitPrediction(features, selectedVersion);
-      setResult(response);
-      setViewState('result');
-      toast.success('Прогноз успешно рассчитан');
-    } catch (error: any) {
-      toast.error(error.message || 'Ошибка расчета прогноза');
+      features[field.id] = normalizedValue;
+    });
+
+    if (hasMissing) {
+      setFormErrors((prev) => ({ ...prev, ...newErrors }));
+      toast.error('Заполните все обязательные поля');
       setViewState('form');
-    } finally {
       setSubmitLoading(false);
+      return;
     }
-  };
 
-  if (schemaLoading) return <div className="p-8 text-center">Загрузка схемы формы...</div>;
-  
-  if (schemaError) return (
-    <div className="p-8 text-center text-red-600">
-      <p className="mb-4">Ошибка загрузки: {schemaError}</p>
-      <Button onClick={() => loadSchema()}>Повторить</Button>
-    </div>
-  );
+    const operationId =
+      predictionMode === 'patient' ? selectedOperationId ?? undefined : undefined;
 
-  if (viewState === 'result' && result) {
+    const response = await submitPrediction(
+      features,
+      selectedVersion,
+      operationId,
+      (attempt, max) => setPollProgress({ attempt, max })
+    );
+
+    setResult(response);
+    setViewState('result');
+    setPollProgress(null);
+
+    toast.success(
+      predictionMode === 'patient'
+        ? 'Прогноз рассчитан и сохранён в БД'
+        : 'Прогноз рассчитан (тестовый режим, не сохранён)'
+    );
+  } catch (error: any) {
+    toast.error(error.message || 'Ошибка расчёта прогноза');
+    setViewState('form');
+    setPollProgress(null);
+  } finally {
+    setSubmitLoading(false);
+  }
+};
+
+  // ─── Рендер: загрузка схемы ───
+  if (schemaLoading)
+    return <div className="p-8 text-center">Загрузка схемы формы...</div>;
+
+  if (schemaError)
     return (
-      <ResultDisplay 
-        result={result} 
-        onBack={() => { setViewState('form'); setResult(null); }} 
-        onNewPrediction={handleClearForm} 
+      <div className="p-8 text-center text-red-600">
+        <p className="mb-4">Ошибка загрузки: {schemaError}</p>
+        <Button onClick={() => loadSchema()}>Повторить</Button>
+      </div>
+    );
+
+  // ─── Рендер: результат ───
+  if (viewState === 'result' && result)
+    return (
+      <ResultDisplay
+        result={result}
+        onBack={() => { setViewState('form'); setResult(null); }}
+        onNewPrediction={handleClearForm}
       />
     );
-  }
 
-  if (viewState === 'loading') return <div className="p-8 text-center">Расчёт прогноза...</div>;
+  // ─── Рендер: загрузка/поллинг ───
+  if (viewState === 'loading')
+    return (
+      <div className="p-8 flex flex-col items-center justify-center min-h-[320px] space-y-6">
+        <Loader2 className="h-12 w-12 text-blue-500 animate-spin" />
 
+        <div className="text-center space-y-2">
+          <h3 className="text-lg font-semibold text-slate-800">
+            {predictionMode === 'patient'
+              ? 'Расчёт и сохранение прогноза...'
+              : 'Расчёт прогноза...'}
+          </h3>
+          <p className="text-sm text-slate-500">
+            {predictionMode === 'patient'
+              ? 'Данные обрабатываются на сервере. Это может занять несколько секунд.'
+              : 'Обработка данных...'}
+          </p>
+        </div>
+
+        {/* Прогресс-бар поллинга */}
+        {pollProgress && (
+          <div className="w-full max-w-xs space-y-2">
+            <div className="flex justify-between text-xs text-slate-400">
+              <span>Ожидание сервера</span>
+              <span>
+                {Math.min(
+                  Math.round((pollProgress.attempt / pollProgress.max) * 100),
+                  99
+                )}%
+              </span>
+            </div>
+            <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-500 rounded-full transition-all duration-500 ease-out"
+                style={{
+                  width: `${Math.min(
+                    (pollProgress.attempt / pollProgress.max) * 100,
+                    99
+                  )}%`,
+                }}
+              />
+            </div>
+            <p className="text-xs text-slate-400 text-center">
+              Попытка {pollProgress.attempt} из {pollProgress.max}
+            </p>
+          </div>
+        )}
+
+        {/* Информация о привязке */}
+        {predictionMode === 'patient' && selectedPatient && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2 text-sm text-emerald-700">
+            Пациент #{selectedPatient.id} · Операция #{selectedOperationId}
+          </div>
+        )}
+      </div>
+    );
+
+  // ─── Рендер: форма ───
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <Card>
@@ -424,7 +504,7 @@ const smartDataImport = useCallback((rawData: Record<string, any>) => {
           <p className="text-slate-500">Заполните данные пациента для расчета прогноза</p>
         </CardHeader>
         <CardContent className="space-y-6">
-          
+          {/* Версия модели */}
           {schema && schema.available_versions.length > 1 && (
             <div className="w-64">
               <Select
@@ -440,6 +520,40 @@ const smartDataImport = useCallback((rawData: Record<string, any>) => {
             </div>
           )}
 
+          {/* Выбор режима */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700">Режим расчёта</label>
+            <ModeSelector
+              mode={predictionMode}
+              onChange={handleModeChange}
+              disabled={submitLoading}
+            />
+          </div>
+
+          {/* Привязка к пациенту */}
+          {predictionMode === 'patient' && (
+            <PatientSelector
+              onOperationSelect={(opId, patient) => {
+                setSelectedOperationId(opId);
+                setSelectedPatient(patient);
+              }}
+              onClear={() => { setSelectedOperationId(null); setSelectedPatient(null); }}
+              selectedOperationId={selectedOperationId}
+            />
+          )}
+
+          {/* Тестовый баннер */}
+          {predictionMode === 'test' && (
+            <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+              <FlaskConical className="h-4 w-4 mt-0.5 shrink-0 text-blue-500" />
+              <span>
+                Тестовый режим: результат будет рассчитан, но{' '}
+                <strong>не сохранён</strong> в базу данных.
+              </span>
+            </div>
+          )}
+
+          {/* Кнопки импорта */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button variant="secondary" onClick={handleClipboardPaste} className="w-full justify-start">
               <Clipboard className="w-4 h-4 mr-2" /> Вставить из буфера
@@ -447,11 +561,15 @@ const smartDataImport = useCallback((rawData: Record<string, any>) => {
             <Button variant="secondary" onClick={handleLoadDemo} className="w-full justify-start">
               <RefreshCw className="w-4 h-4 mr-2" /> Демо-данные
             </Button>
-            <Button variant="secondary" onClick={handleClearForm} className="w-full justify-start text-red-600 hover:text-red-700">
-               Очистить форму
+            <Button
+              variant="secondary"
+              onClick={handleClearForm}
+              className="w-full justify-start text-red-600 hover:text-red-700"
+            >
+              Очистить форму
             </Button>
           </div>
-          
+
           <DropZone fields={getAllFields()} onDataImport={handleDataImport} />
 
           {schema && (
@@ -464,10 +582,25 @@ const smartDataImport = useCallback((rawData: Record<string, any>) => {
             />
           )}
 
-          <div className="pt-6 border-t">
-            <Button size="lg" onClick={handleSubmit} disabled={submitLoading} className="w-full md:w-auto px-12">
-              <Send className="w-5 h-5 mr-2" /> Рассчитать прогноз
+          {/* Кнопка отправки */}
+          <div className="pt-6 border-t flex items-center gap-4">
+            <Button
+              size="lg"
+              onClick={handleSubmit}
+              disabled={
+                submitLoading ||
+                (predictionMode === 'patient' && !selectedOperationId)
+              }
+              className="w-full md:w-auto px-12"
+            >
+              <Send className="w-5 h-5 mr-2" />
+              {predictionMode === 'patient'
+                ? 'Рассчитать и сохранить'
+                : 'Рассчитать прогноз'}
             </Button>
+            {predictionMode === 'patient' && !selectedOperationId && (
+              <p className="text-sm text-amber-600">Выберите операцию пациента</p>
+            )}
           </div>
         </CardContent>
       </Card>

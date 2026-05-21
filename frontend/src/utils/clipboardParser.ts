@@ -320,6 +320,47 @@ export const parseClipboardText = async (
   }
 };
 
+const normalizeText = (value: any): string =>
+  String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/ё/g, 'е');
+
+export const normalizeSelectValue = (
+  value: any,
+  field: UIField
+): number | string | null => {
+  if (value === null || value === undefined || value === '') return null;
+
+  const options = field.options || [];
+  if (!options.length) return value;
+
+  // 1. exact by option.value
+  const byValue = options.find(
+    (option) => String(option.value) === String(value)
+  );
+  if (byValue) return byValue.value;
+
+  // 2. exact by label
+  const normalizedValue = normalizeText(value);
+  const byLabel = options.find(
+    (option) => normalizeText(option.label) === normalizedValue
+  );
+  if (byLabel) return byLabel.value;
+
+  // 3. partial by label
+  const byPartialLabel = options.find((option) => {
+    const normalizedLabel = normalizeText(option.label);
+    return (
+      normalizedLabel.includes(normalizedValue) ||
+      normalizedValue.includes(normalizedLabel)
+    );
+  });
+  if (byPartialLabel) return byPartialLabel.value;
+
+  return value;
+};
+
 /**
  * Validate value against field constraints
  */
@@ -327,25 +368,54 @@ export const validateFieldValue = (
   value: any,
   field: UIField
 ): { valid: boolean; error?: string } => {
+  // Пустые значения не валидируем — это забота submit-логики
   if (value === null || value === undefined || value === '') {
     return { valid: true };
   }
-  
-  if (field.type === 'number' || field.type === 'select') {
-    const num = typeof value === 'number' ? value : parseFloat(String(value).replace(',', '.'));
-    
-    if (isNaN(num)) {
-      return { valid: false, error: 'Введите число' };
+
+  switch (field.type) {
+    case 'number': {
+      const num =
+        typeof value === 'number'
+          ? value
+          : parseFloat(String(value).replace(',', '.'));
+
+      if (isNaN(num)) {
+        return { valid: false, error: 'Введите число' };
+      }
+
+      if (field.min != null && num < field.min) {
+        return { valid: false, error: `Минимум: ${field.min}` };
+      }
+
+      if (field.max != null && num > field.max) {
+        return { valid: false, error: `Максимум: ${field.max}` };
+      }
+
+      return { valid: true };
     }
-    
-    if (field.min !== null && num < field.min) {
-      return { valid: false, error: `Минимум: ${field.min}` };
+
+  case 'select': {
+    const normalized = normalizeSelectValue(value, field);
+    if (normalized === null) {
+      return { valid: false, error: 'Некорректное значение' };
     }
-    
-    if (field.max !== null && num > field.max) {
-      return { valid: false, error: `Максимум: ${field.max}` };
-    }
+    return { valid: true };
   }
-  
-  return { valid: true };
+
+    case 'boolean': {
+      const valid =
+        value === 0 ||
+        value === 1 ||
+        value === true ||
+        value === false;
+
+      return valid
+        ? { valid: true }
+        : { valid: false, error: 'Некорректное значение' };
+    }
+
+    default:
+      return { valid: true };
+  }
 };
