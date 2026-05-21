@@ -4,7 +4,7 @@
 
 // UI Schema Types
 export interface FieldOption {
-  value: number;
+  value: number | string; // Изменено на number | string для поддержки кириллических/римских текстовых опций бэкенда
   label: string;
 }
 

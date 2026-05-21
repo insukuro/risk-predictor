@@ -4,102 +4,106 @@ from typing import Dict, Any
 
 def predict(package: dict, features: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Выполняет предсказание на базе переданного пакета модели (одиночной или ансамбля).
-    Защищено от несовпадения регистра и суффиксов в именах фич.
+    Выполняет предсказание с нормализацией ключей.
     """
     feature_names = package.get("feature_names", [])
     is_ensemble = package.get("is_ensemble", False)
     
-    # Строим нормализованный словарь входных данных (переводим ключи в нижний регистр для гибкого поиска)
-    normalized_inputs = {str(k).lower().strip(): v for k, v in features.items()}
+    # Нормализуем входные ключи
+    normalized_inputs = _normalize_keys(features, feature_names)
     
-    # Формируем строго упорядоченный вектор признаков для модели
-    ready_features = {}
-    for expected_name in feature_names:
-        clean_expected = str(expected_name).lower().strip()
-        
-        # Ищем точное или частичное совпадение фичи
-        matched_val = None
-        if clean_expected in normalized_inputs:
-            matched_val = normalized_inputs[clean_expected]
-        else:
-            # Поиск по частичному вхождению (например "pump" в "pump (0/1)")
-            for input_key, input_val in normalized_inputs.items():
-                if input_key in clean_expected or clean_expected in input_key:
-                    matched_val = input_val
-                    break
-        
-        # Если фича не найдена, подставляем безопасный ноль во избежание падения CatBoost
-        if matched_val is None:
-            ready_features[expected_name] = 0.0
-        else:
-            # Если значение категориальное (строка "муж"/"план"), оставляем как есть, числа кастуем во float
-            if isinstance(matched_val, str):
-                ready_features[expected_name] = matched_val
-            else:
-                try: ready_features[expected_name] = float(matched_val)
-                except: ready_features[expected_name] = 0.0
-
-    # Создаем DataFrame (модели CatBoost/Scikit-Learn требуют строгого порядка колонок)
-    df = pd.DataFrame([ready_features], columns=feature_names)
-
-    # Выполнение предсказания
+    # Готовим features через prepare_features для консистентности
+    from ml_service.features.preprocessing import prepare_features
+    df = prepare_features(package, normalized_inputs)
+    
+    # Определяем pump статус
+    pump_value = _extract_pump_value(normalized_inputs)
+    
     if is_ensemble:
-        # Логика для ансамбля (маршрутизация по флагу ИК / pump)
-        is_on_pump = ready_features.get("pump", ready_features.get("pump (0/1)", 1))
+        models_dict = (
+            package.get("models_ik", {}) 
+            if pump_value == 1 
+            else package.get("models_offpump", {})
+        )
         
-        if is_on_pump == 1:
-            models_dict = package.get("models_ik", {})
-        else:
-            models_dict = package.get("models_offpump", {})
-            
-        # Если это мультиклассовый ансамбль, собираем вероятности по таргет-задачам
         targets_outputs = []
         main_score = 0.0
         
         for target_name, model in models_dict.items():
-            # Получаем вероятность класса 1
             prob = float(model.predict_proba(df)[0][1])
-            level = "low"
-            if prob > 0.5: level = "danger"
-            elif prob > 0.2: level = "medium"
+            level = _get_risk_level(prob)
             
             targets_outputs.append({
                 "name": target_name,
                 "score": round(prob * 100, 2),
                 "level": level
             })
-            # За основной скор берем первый таргет (например, госпитальную летальность)
+            
             if not main_score:
                 main_score = prob
-
-        # Расчет итогового уровня риска
+        
         final_score = round(main_score * 100, 2)
-        final_level = "low"
-        if final_score > 15.0: final_level = "danger"
-        elif final_score > 5.0: final_level = "medium"
-
+        final_level = _get_risk_level(main_score)
+        
         return {
             "risk_score": final_score,
             "risk_level": final_level,
             "targets": targets_outputs,
-            "version": package.get("version", "v4")
+            "version": package.get("version", "v2")
         }
     else:
-        # Старая логика одиночной модели
         model = package["model"]
         raw_pred = model.predict_proba(df)[0][1]
-        
         score = round(float(raw_pred) * 100, 2)
-        level = "low"
-        if score > 15.0: level = "danger"
-        elif score > 5.0: level = "medium"
+        level = _get_risk_level(raw_pred)
         
         return {
             "risk_score": score,
             "risk_level": level,
             "version": package.get("version", "v1")
         }
+
+
+def _normalize_keys(input_dict: Dict, expected_features: list) -> Dict:
+    """Нормализует ключи: 'pump (0/1)' -> 'pump', 'Пол (0=жен,1=муж)' -> 'Пол'"""
+    normalized = {}
+    
+    for key, value in input_dict.items():
+        # Прямое совпадение
+        if key in expected_features:
+            normalized[key] = value
+            continue
+        
+        # Чистим ключ для сравнения
+        key_clean = key.lower().replace(' ', '').replace('(', '').replace(')', '')
+        
+        for expected in expected_features:
+            expected_clean = expected.lower().replace(' ', '').replace('(', '').replace(')', '')
+            
+            if key_clean == expected_clean or key_clean in expected_clean or expected_clean in key_clean:
+                normalized[expected] = value
+                break
+        else:
+            normalized[key] = value
+    
+    return normalized
+
+
+def _extract_pump_value(features: Dict) -> int:
+    """Извлекает значение pump из разных возможных ключей."""
+    for key, value in features.items():
+        if 'pump' in key.lower():
+            return int(value) if value else 1
+    return 1  # По умолчанию считаем, что ИК
+
+
+def _get_risk_level(probability: float) -> str:
+    """Определяет уровень риска по вероятности."""
+    if probability > 0.5:
+        return "danger"
+    elif probability > 0.15:
+        return "medium"
+    return "low"
         
 def _predict_single(model, framework: str, features_df) -> float:
     """Атомарная функция предсказания для одной модели."""

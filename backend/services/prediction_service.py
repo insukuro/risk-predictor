@@ -288,3 +288,34 @@ class PredictionService:
             } if pred.operation and pred.operation.patient else None,
             "features": features,
         }
+        
+    @staticmethod
+    async def get_ui_demo_data(db: Session, version: str) -> Dict[str, Any]:
+        """
+        Запрашивает сырые демо-данные у ML-сервиса и фильтрует их 
+        строго по полям, которые запросил фронтенд в ui_schema.
+        Это убивает проблему дублирования полей (например "Пол" и "Пол (0=жен,1=муж)").
+        """
+        # 1. Получаем сырую свалку демо-данных от ML
+        raw_demo_data = await ml_client.get_demo_data(version)
+        
+        # 2. Получаем актуальную структуру UI для этой версии модели
+        schema_data = await PredictionService.get_ui_schema(db, version)
+        
+        # 3. Собираем плоский набор ID полей, которые реально отрендерит фронтенд
+        allowed_ui_fields = set()
+        for block in schema_data["ui_schema"]["form_blocks"]:
+            for field in block["fields"]:
+                allowed_ui_fields.add(field["id"])
+                
+        # 4. Фильтруем демо-данные: оставляем только то, что знает интерфейс
+        filtered_demo = {}
+        for key, value in raw_demo_data.items():
+            if key in allowed_ui_fields:
+                filtered_demo[key] = value
+                
+        # Плюс гарантия наличия системных флагов
+        if "pump (0/1)" in allowed_ui_fields and "pump (0/1)" not in filtered_demo:
+            filtered_demo["pump (0/1)"] = 1
+                
+        return filtered_demo

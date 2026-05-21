@@ -23,7 +23,7 @@ export const Toggle: React.FC<ToggleProps> = ({
     md: { track: 'w-11 h-6', thumb: 'h-5 w-5', translate: 'translate-x-5' },
     lg: { track: 'w-14 h-7', thumb: 'h-6 w-6', translate: 'translate-x-7' },
   };
-  
+
   const colors = {
     default: checked ? 'bg-blue-600' : 'bg-slate-300',
     danger: checked ? 'bg-red-600' : 'bg-slate-300',
@@ -55,13 +55,11 @@ export const Toggle: React.FC<ToggleProps> = ({
             'pointer-events-none inline-block rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out',
             sizes[size].thumb,
             checked ? sizes[size].translate : 'translate-x-0.5',
-            'mt-0.5'
+            'mt-0.5 ml-0.5' // Центровка ползунка по вертикали
           )}
         />
       </button>
-      {label && (
-        <span className="text-sm font-medium text-slate-700">{label}</span>
-      )}
+      {label && <span className="text-sm font-medium text-slate-700">{label}</span>}
     </label>
   );
 };

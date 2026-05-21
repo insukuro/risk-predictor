@@ -1,42 +1,37 @@
 import React from 'react';
 import { cn } from '../utils/cn';
-import { Card, CardContent, CardHeader } from './ui/Card';
+import { Card, CardContent } from './ui/Card';
 import { Badge, getRiskLevelLabel } from './ui/Badge';
 import { Button } from './ui/Button';
-import { 
-  Heart, 
-  AlertTriangle, 
-  CheckCircle, 
-  Activity, 
-  ArrowLeft,
-  Download,
-  Share2 
-} from 'lucide-react';
+import { ArrowLeft, RefreshCw, Download, Share2, AlertTriangle, Heart, Activity, CheckCircle } from 'lucide-react';
 import type { PredictResponse, TargetRiskItem } from '../types';
 
 interface ResultDisplayProps {
-  result: PredictResponse;
+  result: PredictResponse & { result?: PredictResponse }; // Добавили гибкость для типов
   onBack: () => void;
   onNewPrediction: () => void;
 }
 
-export const ResultDisplay: React.FC<ResultDisplayProps> = ({
-  result,
-  onBack,
-  onNewPrediction,
-}) => {
+export const ResultDisplay: React.FC<ResultDisplayProps> = ({ result: rawResult, onBack, onNewPrediction }) => {
+  
+  // Умная распаковка: если бэк прислал { status, result: {...} }, берем внутренности
+  const result = (rawResult && 'result' in rawResult && rawResult.result) 
+    ? (rawResult.result as PredictResponse) 
+    : (rawResult as PredictResponse);
+
+  // Безопасное извлечение полей с дефолтными значениями на случай битых данных
+  const risk_level = result?.risk_level || 'low';
+  const risk_score = result?.risk_score ?? 0;
+  const model_version = result?.model_version || 'unknown';
+  const targets = result?.targets || [];
+
   const getLevelIcon = (level: string) => {
     switch (level) {
-      case 'low':
-        return <CheckCircle className="h-6 w-6 text-green-500" />;
-      case 'medium':
-        return <Activity className="h-6 w-6 text-yellow-500" />;
-      case 'high':
-        return <AlertTriangle className="h-6 w-6 text-orange-500" />;
-      case 'danger':
-        return <Heart className="h-6 w-6 text-red-500" />;
-      default:
-        return <Activity className="h-6 w-6 text-slate-500" />;
+      case 'low': return <CheckCircle className="w-12 h-12 text-green-500" />;
+      case 'medium': return <Activity className="w-12 h-12 text-yellow-500" />;
+      case 'high': return <AlertTriangle className="w-12 h-12 text-orange-500" />;
+      case 'danger': return <Heart className="w-12 h-12 text-red-500" />;
+      default: return <Activity className="w-12 h-12 text-slate-500" />;
     }
   };
 
@@ -52,160 +47,106 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
 
   const getLevelBgColor = (level: string): string => {
     switch (level) {
-      case 'low': return 'from-green-50 to-green-100 border-green-200';
-      case 'medium': return 'from-yellow-50 to-yellow-100 border-yellow-200';
-      case 'high': return 'from-orange-50 to-orange-100 border-orange-200';
-      case 'danger': return 'from-red-50 to-red-100 border-red-200';
-      default: return 'from-slate-50 to-slate-100 border-slate-200';
+      case 'low': return 'bg-green-50 border-green-200';
+      case 'medium': return 'bg-yellow-50 border-yellow-200';
+      case 'high': return 'bg-orange-50 border-orange-200';
+      case 'danger': return 'bg-red-50 border-red-200';
+      default: return 'bg-slate-50 border-slate-200';
     }
   };
 
-  const formatScore = (score: number): string => {
-    return `${(score * 100).toFixed(1)}%`;
+  // Исправлено: Защита от undefined/null при форматировании
+  const formatScore = (score: number | undefined | null): string => {
+    const validScore = score ?? 0;
+    return `${validScore.toFixed(1)}%`;
   };
 
   return (
-    <div className="space-y-6">
-      {/* Back Button */}
-      <Button
-        variant="ghost"
-        onClick={onBack}
-        icon={<ArrowLeft className="h-4 w-4" />}
-      >
-        Назад к форме
+    <div className="max-w-4xl mx-auto space-y-6">
+      <Button variant="ghost" onClick={onBack} className="mb-4">
+        <ArrowLeft className="w-4 h-4 mr-2" /> Назад к форме
       </Button>
 
-      {/* Main Result Card */}
-      <div className={cn(
-        'rounded-2xl border-2 bg-gradient-to-br p-8',
-        getLevelBgColor(result.risk_level)
-      )}>
-        <div className="flex flex-col items-center text-center">
-          <div className="mb-4">
-            {getLevelIcon(result.risk_level)}
+      <Card className={cn('border-2 shadow-sm', getLevelBgColor(risk_level))}>
+        <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+          <div className="mb-4">{getLevelIcon(risk_level)}</div>
+          <h2 className="text-2xl font-semibold mb-2">Общий риск осложнений</h2>
+          <div className={cn('text-6xl font-bold mb-4', getLevelColor(risk_level))}>
+            {formatScore(risk_score)}
           </div>
-          
-          <h2 className="text-lg font-medium text-slate-600 mb-2">
-            Общий риск осложнений
-          </h2>
-          
-          <div className={cn(
-            'text-6xl font-bold mb-3',
-            getLevelColor(result.risk_level)
-          )}>
-            {formatScore(result.risk_score)}
-          </div>
-          
-          <Badge 
-            variant={result.risk_level as any} 
-            size="lg"
-          >
-            {getRiskLevelLabel(result.risk_level)}
+          <Badge variant={risk_level as any} size="lg" className="mb-4">
+            {getRiskLevelLabel(risk_level)}
           </Badge>
+          <div className="text-sm text-slate-500">
+            Модель: {model_version}
+            {result?.created_at && ` • ${new Date(result.created_at).toLocaleDateString('ru-RU')}`}
+          </div>
+        </CardContent>
+      </Card>
 
-          <p className="mt-4 text-sm text-slate-600">
-            Модель: <span className="font-medium">{result.model_version}</span>
-            {result.created_at && (
-              <> • {new Date(result.created_at).toLocaleDateString('ru-RU')}</>
-            )}
-          </p>
+      {targets.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Детализация рисков по категориям</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {targets.map((target, index) => (
+              <TargetCard key={index} target={target} />
+            ))}
+          </div>
         </div>
-      </div>
-
-      {/* Multi-class Targets (if available) */}
-      {result.targets && result.targets.length > 0 && (
-        <Card>
-          <CardHeader>
-            <h3 className="font-semibold text-slate-900">
-              Детализация рисков по категориям
-            </h3>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {result.targets.map((target: TargetRiskItem, index: number) => (
-                <TargetCard key={index} target={target} />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       )}
 
-      {/* Actions */}
-      <div className="flex flex-wrap gap-3 justify-center">
-        <Button
-          variant="primary"
-          onClick={onNewPrediction}
-          icon={<Activity className="h-4 w-4" />}
-        >
-          Новый расчёт
+      <div className="flex flex-wrap gap-4 mt-8">
+        <Button onClick={onNewPrediction}>
+          <RefreshCw className="w-4 h-4 mr-2" /> Новый расчёт
         </Button>
-        <Button
-          variant="outline"
-          onClick={() => {
-            // TODO: Implement export
-            console.log('Export result:', result);
-          }}
-          icon={<Download className="h-4 w-4" />}
-        >
-          Экспорт
+        <Button variant="outline" onClick={() => console.log('Export:', result)}>
+          <Download className="w-4 h-4 mr-2" /> Экспорт
         </Button>
-        <Button
-          variant="outline"
-          onClick={() => {
-            // TODO: Implement share
-            console.log('Share result:', result);
-          }}
-          icon={<Share2 className="h-4 w-4" />}
-        >
-          Поделиться
+        <Button variant="outline" onClick={() => console.log('Share:', result)}>
+          <Share2 className="w-4 h-4 mr-2" /> Поделиться
         </Button>
       </div>
 
-      {/* Disclaimer */}
-      <p className="text-xs text-slate-500 text-center max-w-xl mx-auto">
-        * Данный прогноз носит информационный характер и не является заменой клинического суждения врача. 
-        Окончательное решение о тактике лечения принимается лечащим врачом с учетом всех индивидуальных особенностей пациента.
-      </p>
+      <div className="mt-8 p-4 bg-slate-50 rounded-lg text-sm text-slate-500 border border-slate-200">
+        <p className="flex items-start gap-2">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0 text-slate-400" />
+          <span>
+            Данный прогноз носит информационный характер и не является заменой клинического суждения врача. 
+            Окончательное решение о тактике лечения принимается лечащим врачом с учетом всех индивидуальных особенностей пациента.
+          </span>
+        </p>
+      </div>
     </div>
   );
 };
 
-// Sub-component for target risk items
 const TargetCard: React.FC<{ target: TargetRiskItem }> = ({ target }) => {
-  const getBorderColor = (level: string): string => {
-    switch (level) {
-      case 'low': return 'border-l-green-500';
-      case 'medium': return 'border-l-yellow-500';
-      case 'high': return 'border-l-orange-500';
-      case 'danger': return 'border-l-red-500';
-      default: return 'border-l-slate-500';
-    }
+  const borderColors: Record<string, string> = {
+    low: 'border-l-green-500', 
+    medium: 'border-l-yellow-500',
+    high: 'border-l-orange-500', 
+    danger: 'border-l-red-500'
+  };
+  const textColors: Record<string, string> = {
+    low: 'text-green-600', 
+    medium: 'text-yellow-600',
+    high: 'text-orange-600', 
+    danger: 'text-red-600'
   };
 
-  const getTextColor = (level: string): string => {
-    switch (level) {
-      case 'low': return 'text-green-600';
-      case 'medium': return 'text-yellow-600';
-      case 'high': return 'text-orange-600';
-      case 'danger': return 'text-red-600';
-      default: return 'text-slate-600';
-    }
-  };
+  // Защита от отсутствия score в target
+  const score = target?.score ?? 0;
+  const level = target?.level || 'low';
 
   return (
-    <div className={cn(
-      'bg-white rounded-lg border-l-4 border border-slate-200 p-4',
-      getBorderColor(target.level)
-    )}>
-      <p className="text-sm font-medium text-slate-700 mb-2 line-clamp-2">
-        {target.name}
-      </p>
-      <div className="flex items-baseline justify-between">
-        <span className={cn('text-2xl font-bold', getTextColor(target.level))}>
-          {(target.score * 100).toFixed(1)}%
+    <div className={cn('bg-white rounded-lg shadow-sm border-y border-r border-l-4 p-4 border-slate-200', borderColors[level] || 'border-l-slate-500')}>
+      <h4 className="text-sm font-medium text-slate-600 mb-2">{target?.name || 'Показатель'}</h4>
+      <div className="flex items-end justify-between">
+        <span className={cn('text-2xl font-bold', textColors[level] || 'text-slate-600')}>
+          {score.toFixed(1)}%
         </span>
-        <Badge variant={target.level as any} size="sm">
-          {getRiskLevelLabel(target.level)}
+        <Badge variant={level as any} size="sm">
+          {getRiskLevelLabel(level)}
         </Badge>
       </div>
     </div>
