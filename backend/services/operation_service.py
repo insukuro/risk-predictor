@@ -134,29 +134,44 @@ class OperationService:
         date_to: Optional[str] = None
     ) -> Dict[str, Any]:
         """Get operation summary statistics."""
-        query = db.query(
-            Operation.type,
-            func.count(Operation.id).label('count'),
-            func.avg(Prediction.risk_score).label('avg_risk')
-        ).outerjoin(
-            Prediction, Operation.id == Prediction.operation_id
+        from datetime import datetime
+        
+        query = db.query(Operation)
+        
+        # Применяем фильтры по датам
+        if date_from:
+            try:
+                date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+                query = query.filter(Operation.date >= date_from_obj)
+            except ValueError:
+                pass
+        
+        if date_to:
+            try:
+                date_to_obj = datetime.strptime(date_to, '%Y-%m-%d')
+                query = query.filter(Operation.date <= date_to_obj)
+            except ValueError:
+                pass
+        
+        # Общее количество операций
+        total_operations = query.count()
+        
+        # Группировка по типам
+        type_counts = (
+            query.with_entities(
+                Operation.type, 
+                func.count(Operation.id).label('count')
+            )
+            .group_by(Operation.type)
+            .all()
         )
         
-        if date_from:
-            query = query.filter(Operation.date >= date_from)
-        if date_to:
-            query = query.filter(Operation.date <= date_to)
-        
-        results = query.group_by(Operation.type).all()
+        # Формируем словарь by_type
+        by_type = {}
+        for op_type, count in type_counts:
+            by_type[op_type or 'OTHER'] = count
         
         return {
-            "by_type": [
-                {
-                    "type": r.type,
-                    "count": r.count,
-                    "avg_risk_score": float(r.avg_risk) if r.avg_risk else None
-                }
-                for r in results
-            ],
-            "total_operations": sum(r.count for r in results)
+            "total_operations": total_operations,
+            "by_type": by_type
         }

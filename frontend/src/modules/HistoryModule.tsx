@@ -284,7 +284,7 @@ const HistoryCard: React.FC<HistoryCardProps> = ({
               item.risk_level === 'high' && 'text-orange-600',
               item.risk_level === 'danger' && 'text-red-600'
             )}>
-              {(item.risk_score * 100).toFixed(1)}%
+              {(item.risk_score).toFixed(1)}%
             </span>
           </div>
 
@@ -347,7 +347,7 @@ const HistoryDetails: React.FC<HistoryDetailsProps> = ({ item, formatDate }) => 
           item.risk_level === 'high' && 'text-orange-600',
           item.risk_level === 'danger' && 'text-red-600'
         )}>
-          {(item.risk_score * 100).toFixed(1)}%
+          {(item.risk_score).toFixed(1)}%
         </div>
       </div>
 

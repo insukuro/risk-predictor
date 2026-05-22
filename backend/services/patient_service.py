@@ -188,9 +188,12 @@ class PatientService:
         }
     
     @staticmethod
-    def get_age_distribution(db: Session) -> Dict[str, Any]:
-        """Get age distribution of all patients."""
-        patients = db.query(Patient).all()
+    def get_age_distribution(db: Session) -> List[Dict[str, Any]]:
+        """Get age distribution of all patients with operations."""
+        # Получаем пациентов, у которых есть операции
+        patients_with_ops = db.query(Patient).join(
+            Operation, Patient.id == Operation.patient_id
+        ).distinct().all()
         
         age_ranges = {
             "0-18": 0,
@@ -200,10 +203,8 @@ class PatientService:
             "71+": 0
         }
         
-        ages = []
-        for patient in patients:
+        for patient in patients_with_ops:
             age = PatientService.calculate_age(patient.birth_date)
-            ages.append(age)
             
             if age <= 18:
                 age_ranges["0-18"] += 1
@@ -216,11 +217,11 @@ class PatientService:
             else:
                 age_ranges["71+"] += 1
         
-        return {
-            "ranges": age_ranges,
-            "total_patients": len(patients),
-            "average_age": sum(ages) / len(ages) if ages else 0
-        }
+        # Возвращаем массив объектов
+        return [
+            {"age_group": group, "count": count}
+            for group, count in age_ranges.items()
+        ]
     
     @staticmethod
     def merge_patients(db: Session, source_id: int, target_id: int) -> int:

@@ -1,8 +1,9 @@
+
 // modules/AnalyticsModule.tsx
 import React, { useState, useEffect } from 'react';
 import {
   BarChart2, Users, Activity, TrendingUp,
-  RefreshCw, Calendar,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -76,7 +77,7 @@ const HorizontalBar: React.FC<BarChartProps> = ({ data, title, maxValue }) => {
                   'h-full rounded-full transition-all duration-500',
                   item.color ?? 'bg-blue-500'
                 )}
-                style={{ width: `${(item.value / max) * 100}%` }}
+                style={{ width: `${(item.value / max) }%` }}
               />
             </div>
           </div>
@@ -95,12 +96,6 @@ const HorizontalBar: React.FC<BarChartProps> = ({ data, title, maxValue }) => {
 // Основной модуль
 // ──────────────────────────────────────────────
 
-const RISK_COLORS: Record<string, string> = {
-  low: 'bg-green-500',
-  medium: 'bg-yellow-500',
-  high: 'bg-orange-500',
-  danger: 'bg-red-500',
-};
 
 const OP_TYPE_COLORS: Record<string, string> = {
   CABG: 'bg-blue-500',
@@ -161,7 +156,7 @@ export const AnalyticsModule: React.FC = () => {
       (acc, p) => acc + (p.risk_score ?? 0),
       0
     );
-    return (sum / recentPredictions.length) * 100;
+    return (sum / recentPredictions.length);
   }, [recentPredictions]);
 
   // ──────────────────────────────────────────────
@@ -277,11 +272,17 @@ export const AnalyticsModule: React.FC = () => {
         {/* По типу операций */}
         <HorizontalBar
           title="Операции по типу"
-          data={Object.entries(summary?.by_type ?? {}).map(([label, value]) => ({
-            label,
-            value,
-            color: OP_TYPE_COLORS[label] ?? 'bg-slate-400',
-          }))}
+          data={(() => {
+            // Берем данные из summary
+            const byType = summary?.by_type ?? {};
+            
+            // Преобразуем объект {CABG: 3, AVR: 2} в массив для графика
+            return Object.entries(byType).map(([typeName, count]) => ({
+              label: typeName,
+              value: count,
+              color: OP_TYPE_COLORS[typeName] ?? 'bg-slate-400',
+            }));
+          })()}
         />
 
         {/* Распределение риска */}
@@ -358,7 +359,7 @@ export const AnalyticsModule: React.FC = () => {
                       </td>
                       <td className="py-2 pr-4 font-semibold">
                         {p.risk_score != null
-                          ? `${(p.risk_score * 100).toFixed(1)}%`
+                          ? `${(p.risk_score).toFixed(1)}%`
                           : '—'}
                       </td>
                       <td className="py-2 pr-4">
