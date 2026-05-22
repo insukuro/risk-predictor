@@ -88,24 +88,24 @@ services:
     restart: always
 
   # Frontend
-risk-frontend:
-  build:
-    context: .
-    dockerfile: infrastructure/docker/frontend.Dockerfile
-    args:
-      VITE_API_BASE_URL: /api
-      VITE_CALC_URL: /calc
-  container_name: risk-predictor-frontend
-  environment:
-    VIRTUAL_HOST: cabg.insukuro.ru
-    VIRTUAL_PORT: 80
-    LETSENCRYPT_HOST: cabg.insukuro.ru
-    LETSENCRYPT_EMAIL: tukhtarovilkhom@gmail.com
-  expose:
-    - "80"
-  networks:
-    - docker_web-network
-  restart: always
-  depends_on:
-    risk-backend:
-      condition: service_started
+  risk-frontend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/frontend.Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+        VITE_CALC_URL: /calc
+    container_name: risk-predictor-frontend
+    environment:
+      VIRTUAL_HOST: cabg.insukuro.ru
+      VIRTUAL_PORT: 80
+      LETSENCRYPT_HOST: cabg.insukuro.ru
+      LETSENCRYPT_EMAIL: tukhtarovilkhom@gmail.com
+    expose:
+      - "80"
+    networks:
+      - docker_web-network
+    restart: always
+    depends_on:
+      risk-backend:
+        condition: service_started
