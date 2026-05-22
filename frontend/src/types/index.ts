@@ -190,11 +190,8 @@ export type PredictionMode = 'test' | 'patient';
 
 export interface AnalyticsSummary {
   total_operations: number;
-  by_type: Record<string, number>;
-  risk_distribution: Record<string, number>;
-  date_range?: { from: string; to: string };
+  by_type: Record<string, number>; 
 }
-
 export interface AgeDistribution {
   age_group: string;
   count: number;

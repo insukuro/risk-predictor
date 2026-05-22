@@ -134,6 +134,7 @@ const App: React.FC = () => {
         {activeTab === 'prediction' && <PredictionModule />}
         {activeTab === 'history' && <HistoryModule />}
         {activeTab === 'calculator' && <CalculatorModule />}
+        {activeTab === 'analytics' && <AnalyticsModule />} 
       </main>
 
       {/* Footer */}
