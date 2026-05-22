@@ -10,6 +10,7 @@ ML_TO_CALC_MAPPING = {
     "EuroSCORE II (%)": "euroscore",
     "Индекс Чарлсона": "cci",
     "ИМТ": "bmi",
+    "ИМТ (кг/м²)": "bmi",
     "Клиренс креатинина": "clcr"
 }
 
