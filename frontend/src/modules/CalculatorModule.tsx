@@ -28,6 +28,18 @@ interface ExtendedCalculatorMetadata extends CalculatorMetadata {
   }>;
 }
 
+export const sanitizeNumber = (value: any): number | null => {
+  if (value === null || value === undefined) return null;
+
+  const n = Number(value);
+
+  if (Number.isNaN(n) || !Number.isFinite(n)) {
+    return null;
+  }
+
+  return n;
+};
+
 export const CalculatorModule: React.FC = () => {
   // State
   const [metadata, setMetadata] = useState<ExtendedCalculatorMetadata | null>(null);
@@ -198,7 +210,7 @@ export const CalculatorModule: React.FC = () => {
         value={value !== null && value !== undefined ? String(value) : ''}
         onChange={(e) => {
           const val = e.target.value.replace(',', '.');
-          handleFieldChange(fieldId, val === '' ? null : parseFloat(val));
+          handleFieldChange(fieldId, sanitizeNumber(val));
         }}
         min={meta?.min}
         max={meta?.max}
@@ -356,12 +368,18 @@ const ResultsGrid: React.FC<ResultsGridProps> = ({ metrics }) => {
     }
   };
 
-  const formatValue = (value: number): string => {
+const formatValue = (value: number, metricKey?: string): string => {
+    // Для EuroSCORE - значение уже в процентах
+    if (metricKey?.includes('EuroSCORE')) {
+        return `${value.toFixed(2)}%`;
+    }
+    
+    // Для остальных метрик
     if (value < 1) {
-      return `${(value * 100).toFixed(1)}%`;
+        return `${(value * 100).toFixed(1)}%`;
     }
     return value.toFixed(2);
-  };
+};
 
   return (
     <div className="space-y-4">
@@ -391,7 +409,7 @@ const ResultsGrid: React.FC<ResultsGridProps> = ({ metrics }) => {
               'text-4xl font-bold mb-2',
               getLevelTextColor(item.level)
             )}>
-              {formatValue(item.value)}
+              {formatValue(item.value, key)}
             </div>
             <p className="text-sm text-slate-600">
               {item.label}

@@ -26,7 +26,7 @@ CALCULATOR_MAPS = {
         "metric_keys": ["EuroSCORE II (%)"]
     },
     "cci": {
-        "label": "Индекс коморбидности Чарлсона",
+        "label": "Индекс коморбидности Чарлсона (модифицированный",
         "fields": [
             "age", "sex", "weight", "creatinine", "mi", "chsn", 
             "lvef", "pad", "bca", "stroke", "copd", "peptic_ulcer", "diabetes"
@@ -75,7 +75,24 @@ FIELD_METADATA_BACKEND = {
     'pump': {'label': 'Искусственное кровообращение', 'group': 'Операция', 'type': 'select', 'options': [{'value': 0, 'label': 'Off-pump'}, {'value': 1, 'label': 'On-pump'}]}
 }
 
+LVEF_MAP = {
+    1: 55.0,
+    2: 40.0,
+    3: 25.0,
 
+    "Нормальная (≥50%)": 55.0,
+    "Нормальная": 55.0,
+
+    "Умеренно сниженная (30-49%)": 40.0,
+    "Умеренно снижена (30-49%)": 40.0,
+    "Умеренно": 40.0,
+
+    "Тяжелая дисфункция (<30%)": 25.0,
+    "Тяжелая дисфункция": 25.0,
+    "Тяжелая": 25.0,
+}
+def to_bool(v):
+    return str(v).lower() in ["1", "true", "yes", "да", "экстренная"]
 @router.post("/calculate-all", response_model=UIAllMetricsResponse)
 async def ui_calculate_all(request: Request):
     try:
@@ -93,12 +110,25 @@ async def ui_calculate_all(request: Request):
         normalized["Креатинин в ОРИТ (мкмоль/л)"] = input_data.get("Креатинин в ОРИТ (мкмоль/л)", input_data.get("Креатинин до операции (мкмоль/л)", input_data.get("creatinine", 85.0)))
         
         lvef_raw = input_data.get("Категория ФВ ЛЖ", input_data.get("lvef", 55.0))
-        if lvef_raw == 1 or "Нормальная" in str(lvef_raw): normalized["Категория ФВ ЛЖ"] = 55.0
-        elif lvef_raw == 2 or "Умеренно" in str(lvef_raw): normalized["Категория ФВ ЛЖ"] = 40.0
-        elif lvef_raw == 3 or "Тяжелая" in str(lvef_raw): normalized["Категория ФВ ЛЖ"] = 25.0
-        else:
-            try: normalized["Категория ФВ ЛЖ"] = float(lvef_raw)
-            except: normalized["Категория ФВ ЛЖ"] = 55.0
+
+        def normalize_lvef(x):
+            if x in LVEF_MAP:
+                return LVEF_MAP[x]
+
+            # если пришёл int/float строкой
+            try:
+                val = int(x)
+                if val in LVEF_MAP:
+                    return LVEF_MAP[val]
+            except:
+                pass
+
+            try:
+                return float(x)
+            except:
+                return 55.0
+
+        normalized["Категория ФВ ЛЖ"] = normalize_lvef(lvef_raw)
 
         nyha_raw = input_data.get("ХСН ФК", input_data.get("nyha", 1))
         try: normalized["ХСН ФК"] = int(nyha_raw)
@@ -110,7 +140,7 @@ async def ui_calculate_all(request: Request):
                 if k in input_data:
                     val = input_data[k]
                     break
-            try: normalized[target_alias] = 1 if val in [1, True, "1", "true", "Экстренная"] else 0
+            try: normalized[target_alias] = 1 if to_bool(val) else 0
             except: normalized[target_alias] = 0
 
         af_val = input_data.get("ФП в анамнезе (0/1)", input_data.get("af", 0))

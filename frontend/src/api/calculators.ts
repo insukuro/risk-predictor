@@ -47,9 +47,10 @@ export const calculateAllMetrics = async (
     const cleanedFeatures: Record<string, any> = {};
     
     Object.entries(features).forEach(([key, value]) => {
-      if (value !== null && value !== undefined && value !== '') {
-        cleanedFeatures[key] = value;
-      }
+      if (value === null || value === undefined) return;
+      if (typeof value === 'number' && !Number.isFinite(value)) return;
+
+      cleanedFeatures[key] = value;
     });
 
     // Собираем payload, который ждёт ваш обновлённый бэкенд
