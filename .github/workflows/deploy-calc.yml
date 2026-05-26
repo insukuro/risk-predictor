@@ -41,6 +41,12 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             cd ${{ secrets.VPS_PROJECT_PATH }}
+            
+            # Принудительно синхронизируем с репозиторием (на случай ручных правок)
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fdx -- calc_service/ requirements/calc.txt infrastructure/docker/calc_service.Dockerfile
+            
             docker compose build risk-calc-service
             docker compose up -d --no-deps risk-calc-service
             echo "✅ Calc Service deployed"

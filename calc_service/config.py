@@ -16,5 +16,6 @@ if not os.path.exists(JSON_PATH):
 with open(JSON_PATH, "r", encoding="utf-8") as f:
     config_data = json.load(f)
 
-COEFFICIENTS = config_data["euroscore_coefficients"]
+# Теперь COEFFICIENTS хранит весь JSON, а не только одну шкалу
+COEFFICIENTS = config_data 
 THRESHOLDS = config_data["thresholds"]

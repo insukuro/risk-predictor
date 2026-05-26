@@ -101,6 +101,7 @@ risk-predictor
 │     ├─ patient_service.py
 │     └─ prediction_service.py
 ├─ calc_service
+│  ├─ __init__.py
 │  ├─ app
 │  │  ├─ __init__.py
 │  │  ├─ api_endpoints.py
@@ -194,7 +195,23 @@ risk-predictor
 │  ├─ model_versions
 │  │  ├─ latest.pkl
 │  │  ├─ model_v1.pkl
-│  │  └─ model_v2.pkl
+│  │  ├─ model_v2.pkl
+│  │  ├─ model_v3.pkl
+│  │  └─ tabnet
+│  │     ├─ ik
+│  │     │  ├─ preprocessors (1).pkl
+│  │     │  ├─ preprocessors.pkl
+│  │     │  ├─ tabnet_ОПН.zip
+│  │     │  ├─ tabnet_ОСН.zip
+│  │     │  ├─ tabnet_Послеоп.летальность.zip
+│  │     │  └─ tabnet_Сепсис.zip
+│  │     └─ offpump
+│  │        ├─ tabnet_Инсульт_ОНМК.zip
+│  │        ├─ tabnet_Медиастинит.zip
+│  │        ├─ tabnet_ОИМпослеАКШ (1).zip
+│  │        ├─ tabnet_ОИМпослеАКШ.zip
+│  │        ├─ tabnet_ОПН.zip
+│  │        └─ tabnet_Послеоп.летальность.zip
 │  ├─ models
 │  │  ├─ __init__.py
 │  │  ├─ loader.py
@@ -206,6 +223,7 @@ risk-predictor
 │  └─ utils
 │     ├─ __init__.py
 │     └─ helpers.py
+├─ ml_service.zip
 ├─ requirements
 │  ├─ backend.txt
 │  ├─ base.txt

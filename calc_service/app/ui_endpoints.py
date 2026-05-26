@@ -10,7 +10,7 @@ CALCULATOR_MAPS = {
     "bmi": {
         "label": "Индекс массы тела (ИМТ)",
         "fields": ["weight", "height"],
-        "metric_keys": ["ИМТ (кг/м²)"] # Связываем с ключами в ответе
+        "metric_keys": ["ИМТ (кг/м²)"]
     },
     "clcr": {
         "label": "Клиренс креатинина (Кокрофт-Голт)",
@@ -20,173 +20,248 @@ CALCULATOR_MAPS = {
     "euroscore": {
         "label": "EuroSCORE II",
         "fields": [
-            "age", "sex", "weight", "creatinine", "pad", "bca", 
-            "copd", "diabetes", "urgency", "nyha", "lvef", "paph"
+            "age", "sex", "weight", "creatinine", "copd", "extracardiac_pathology",
+            "neurological_dysfunction", "previous_cardiac_surgery", "active_endocarditis",
+            "critical_preop_state", "urgency", "lvef", "recent_mi", "paph_val"
         ],
-        "metric_keys": ["EuroSCORE II (%)"]
+        "metric_keys": ["EuroSCORE II (Летальность %)"]
     },
-    "cci": {
-        "label": "Индекс коморбидности Чарлсона (модифицированный",
+    "crusade": {
+        "label": "CRUSADE Bleeding Score",
+        "fields": ["hematocrit", "creatinine", "heart_rate", "sex", "chsn", "diabetes", "systolic_bp"],
+        "metric_keys": ["CRUSADE Bleeding (Баллы)"]
+    },
+    "caprini": {
+        "label": "Caprini Risk Score (ВТЭ)",
         "fields": [
-            "age", "sex", "weight", "creatinine", "mi", "chsn", 
-            "lvef", "pad", "bca", "stroke", "copd", "peptic_ulcer", "diabetes"
+            "age", "weight", "height", "copd", "recent_mi", "chsn", "previous_cardiac_surgery", "cpb_duration",
+            "caprini_edema", "caprini_varicose", "caprini_pregnancy_loss", "caprini_oc_hrt", "caprini_sepsis_month",
+            "caprini_ibd", "caprini_arthroscopy", "caprini_malignancy", "caprini_immobilization", "caprini_plaster",
+            "caprini_cvc", "caprini_vte_history", "caprini_family_vte", "caprini_thrombophilia", "caprini_stroke_month",
+            "caprini_arthroplasty", "caprini_fracture", "caprini_spine_injury"
         ],
-        "metric_keys": ["Индекс коморбидности Чарлсона"]
+        "metric_keys": ["Caprini VTE Risk (Баллы)"]
+    },
+    "chads_vasc": {
+        "label": "CHA₂DS₂-VASc Score",
+        "fields": ["chsn", "lvef", "hypertension", "age", "diabetes", "stroke_history", "recent_mi", "extracardiac_pathology", "sex"],
+        "metric_keys": ["CHA₂DS₂-VASc (Тромбоэмболии)"]
+    },
+    "pre_deliric": {
+        "label": "PRE-DELIRIC Model (Делирий)",
+        "fields": ["age", "delirium_apache", "delirium_coma_type", "delirium_admission_type", "delirium_infection", "delirium_acidosis", "delirium_morphine", "delirium_sedatives", "urea", "urgency"],
+        "metric_keys": ["PRE-DELIRIC (Вероятность делирия %)"]
+    },
+    "cleveland_thakar": {
+        "label": "Cleveland Clinic Score (Thakar)",
+        "fields": ["sex", "chsn", "lvef", "iabp", "copd", "diabetes_insulin", "previous_cardiac_surgery", "urgency", "operation_type", "creatinine"],
+        "metric_keys": ["Cleveland Clinic Thakar (Баллы)"]
+    },
+    "resp_failure": {
+        "label": "Риск дыхательной недостаточности",
+        "fields": ["age", "urgency", "cpb_duration", "weight", "height"],
+        "metric_keys": ["Дыхательная недостаточность (Баллы)"]
+    },
+    "nhsn_infection": {
+        "label": "NHSN Risk Index",
+        "fields": ["op_duration_long", "nhsn_asa_class", "nhsn_dirty_wound", "diabetes", "weight", "height", "previous_cardiac_surgery", "nhsn_immunosuppression"],
+        "metric_keys": ["NHSN Риск инфекции области вмешательства"]
     }
 }
 
-# Маппинг-нормализатор для входящих UI-ключей
-FLAGS_MAPPING = {
-    "Лёгочная гипертензия (0/1)": ["Лёгочная гипертензия (0/1)", "Лёгочная гипертензия", "paph"],
-    "Гипертония (0/1)": ["Гипертония (0/1)", "Гипертония", "hypertension"],
-    "Сахарный диабет (0/1)": ["Сахарный диабет (0/1)", "Сахарный диабет", "diabetes"],
-    "ХОБЛ (0/1)": ["ХОБЛ (0/1)", "ХОБЛ", "copd"],
-    "ИМ в анамнезе (0/1)": ["ИМ в анамнезе (0/1)", "ИМ в анамнезе", "mi"],
-    "ХСН (0/1)": ["ХСН (0/1)", "ХСН", "chsn"],
-    "ОНМК в анамнезе (0/1)": ["ОНМК в анамнезе (0/1)", "ОНМК в анамнезе", "stroke"],
-    "Атеросклероз НК (0/1)": ["Атеросклероз НК (0/1)", "Атеросклероз НК", "pad"],
-    "Атеросклероз БЦА (0/1)": ["Атеросклероз БЦА (0/1)", "Атеросклероз БЦА", "bca"],
-    "Язвенная болезнь ЖКТ (0/1)": ["Язвенная болезнь ЖКТ (0/1)", "Язвенная болезнь ЖКТ", "peptic_ulcer"],
-    "Срочность (0=план,1=экстр)": ["Срочность (0=план,1=экстр)", "Срочность", "urgency"],
-    "pump": ["pump (0/1)", "pump", "on_pump"]
-}
-
-# --- МЕТАДАННЫЕ ПОЛЕЙ (перенесены с фронтенда) ---
+# --- МЕТАДАННЫЕ ПОЛЕЙ ДЛЯ РЕНДЕРА НА ТУПОМ ФРОНТЕНДЕ ---
 FIELD_METADATA_BACKEND = {
     'Пол (0=жен,1=муж)': {'label': 'Пол', 'group': 'Общая информация', 'type': 'select', 'options': [{'value': 0, 'label': 'Женский'}, {'value': 1, 'label': 'Мужской'}]},
     'Возраст (лет)': {'label': 'Возраст (лет)', 'group': 'Общая информация', 'type': 'number', 'min': 0, 'max': 120},
     'Вес (кг)': {'label': 'Вес (кг)', 'group': 'Общая информация', 'type': 'number', 'min': 10, 'max': 300},
     'Рост (м)': {'label': 'Рост (м)', 'group': 'Общая информация', 'type': 'number', 'min': 0.5, 'max': 2.5, 'step': 0.01},
-    'Креатинин в ОРИТ (мкмоль/л)': {'label': 'Креатинин (мкмоль/л)', 'group': 'Лабораторные показатели', 'type': 'number', 'min': 0, 'max': 2000},
-    'Категория ФВ ЛЖ': {'label': 'Категория ФВ ЛЖ', 'group': 'Кардиометрия', 'type': 'select', 'options': [{'value': 1, 'label': 'Нормальная (≥50%)'}, {'value': 2, 'label': 'Умеренно снижена (30-49%)'}, {'value': 3, 'label': 'Низкая (<30%)'}]},
-    'ХСН ФК': {'label': 'ХСН Функциональный класс', 'group': 'Кардиометрия', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет ХСН'}, {'value': 1, 'label': 'I ФК'}, {'value': 2, 'label': 'II ФК'}, {'value': 3, 'label': 'III ФК'}, {'value': 4, 'label': 'IV ФК'}]},
-    'Лёгочная гипертензия (0/1)': {'label': 'Лёгочная гипертензия', 'group': 'Кардиометрия', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
-    'Гипертония (0/1)': {'label': 'Артериальная гипертензия', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    
+    'Хронические заболевания лёгких (0/1)': {'label': 'Хронические заболевания лёгких / ХОБЛ', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Экстракардиальная артериопатия (0/1)': {'label': 'Экстракардиальная артериопатия', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Неврологическая дисфункция (0/1)': {'label': 'Неврологическая дисфункция', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Предыдущая операция на сердце (0/1)': {'label': 'Предыдущая операция на сердце (Реоперация)', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Активный эндокардит (0/1)': {'label': 'Активный эндокардит', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Критическое состояние перед операцией (0/1)': {'label': 'Критическое состояние перед операцией', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Недавний инфаркт миокарда (0/1)': {'label': 'Недавний инфаркт миокарда', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Сахарный диабет (0/1)': {'label': 'Сахарный диабет', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Инсулинозависимый СД (0/1)': {'label': 'Инсулинозависимый СД', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Признаки ХСН (0/1)': {'label': 'Признаки ХСН', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Артериальная гипертензия (0/1)': {'label': 'Артериальная гипертензия', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Инсульт/ТИА в анамнезе (0/1)': {'label': 'Инсульт / ТИА в анамнезе', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
     'ФП в анамнезе (0/1)': {'label': 'Фибрилляция предсердий', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
-    'ИМ в анамнезе (0/1)': {'label': 'Инфаркт миокарда в анамнезе', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
-    'ХСН (0/1)': {'label': 'Хроническая сердечная недостаточность', 'group': 'Анамнез', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
-    'Сахарный диабет (0/1)': {'label': 'Сахарный диабет', 'group': 'Коморбидность', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
-    'ХОБЛ (0/1)': {'label': 'ХОБЛ', 'group': 'Коморбидность', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
-    'ОНМК в анамнезе (0/1)': {'label': 'ОНМК в анамнезе', 'group': 'Коморбидность', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
-    'Атеросклероз НК (0/1)': {'label': 'Атеросклероз нижних конечностей', 'group': 'Коморбидность', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
-    'Атеросклероз БЦА (0/1)': {'label': 'Атеросклероз БЦА', 'group': 'Коморбидность', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
-    'Язвенная болезнь ЖКТ (0/1)': {'label': 'Язвенная болезнь ЖКТ', 'group': 'Коморбидность', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
-    'Срочность (0=план,1=экстр)': {'label': 'Срочность операции', 'group': 'Операция', 'type': 'select', 'options': [{'value': 0, 'label': 'Плановая'}, {'value': 1, 'label': 'Экстренная'}]},
-    'pump': {'label': 'Искусственное кровообращение', 'group': 'Операция', 'type': 'select', 'options': [{'value': 0, 'label': 'Off-pump'}, {'value': 1, 'label': 'On-pump'}]}
+
+    'Креатинин сыворотки (мкмоль/л)': {'label': 'Креатинин сыворотки (мкмоль/л)', 'group': 'Лабораторные показатели', 'type': 'number'},
+    'Гематокрит (%)': {'label': 'Гематокрит (%)', 'group': 'Лабораторные показатели', 'type': 'number'},
+    'ЧСС (уд/мин)': {'label': 'ЧСС (уд/мин)', 'group': 'Лабораторные показатели', 'type': 'number'},
+    'САД (мм рт.ст.)': {'label': 'САД (мм рт.ст.)', 'group': 'Лабораторные показатели', 'type': 'number'},
+    'Лёгочная гипертензия (мм рт.ст.)': {'label': 'Лёгочная гипертензия (мм рт.ст.)', 'group': 'Кардиометрия', 'type': 'number'},
+    'Фракция выброса ЛЖ (%)': {'label': 'Фракция выброса ЛЖ (%)', 'group': 'Кардиометрия', 'type': 'number'},
+    'Мочевина (ммоль/л)': {'label': 'Мочевина (ммоль/л)', 'group': 'Лабораторные показатели', 'type': 'number'},
+
+    'Экстренность операции (0=план,1=ург,2=экстр)': {'label': 'Экстренность операции', 'group': 'Операция', 'type': 'select', 'options': [{'value': 0, 'label': 'Плановая'}, {'value': 1, 'label': 'Ургентная'}, {'value': 2, 'label': 'Экстренная'}]},
+    'Тип операции (0=АКШ,1=клапан,2=АКШ+клапан,3=другая)': {'label': 'Тип операции', 'group': 'Операция', 'type': 'select', 'options': [{'value': 0, 'label': 'АКШ только'}, {'value': 1, 'label': 'Клапанная'}, {'value': 2, 'label': 'АКШ + Клапанная'}, {'value': 3, 'label': 'Другая'}]},
+    'Длительность ИК (мин)': {'label': 'Длительность ИК (мин)', 'group': 'Операция', 'type': 'number'},
+    'Длительность операции >75 перцентиля (0/1)': {'label': 'Длительность операции >75 перцентиля', 'group': 'Операция', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Внутриаортальная баллонная контрпульсация (0/1)': {'label': 'ВАБК', 'group': 'Операция', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+
+    'Отёк ног (0/1)': {'label': 'Отёк ног', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Варикозное расширение вен (0/1)': {'label': 'Варикозное расширение вен', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Необъяснимое прерывание беременности (0/1)': {'label': 'Необъяснимое прерывание беременности', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Оральные контрацептивы/ЗГТ (0/1)': {'label': 'Оральные контрацептивы/ЗГТ', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Сепсис <1 мес (0/1)': {'label': 'Сепсис <1 мес', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Воспалительные заболевания кишечника (0/1)': {'label': 'ВЗК', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Артроскопия (0/1)': {'label': 'Артроскопия', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Злокачественное новообразование (0/1)': {'label': 'Злокачественное новообразование', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Обездвиженность >72 час (0/1)': {'label': 'Обездвиженность >72 час', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Гипсовая иммобилизация (0/1)': {'label': 'Гипсовая иммобилизация', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Центральный венозный катетер (0/1)': {'label': 'Центральный венозный катетер', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'ВТЭ в анамнезе (0/1)': {'label': 'ВТЭ в анамнезе', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Семейный анамнез ВТЭ (0/1)': {'label': 'Семейный анамнез ВТЭ', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Врождённые тромбофилии (0/1)': {'label': 'Врождённые тромбофилии', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Инсульт <1 мес (0/1)': {'label': 'Инсульт <1 мес', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Элективная артропластика (0/1)': {'label': 'Элективная артропластика', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Перелом бедра/таза (0/1)': {'label': 'Перелом бедра/таза', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Острая травма позвоночника (0/1)': {'label': 'Острая травма позвоночника', 'group': 'Шкала Caprini', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+
+    'APACHE-II балл': {'label': 'APACHE-II балл', 'group': 'Шкала PRE-DELIRIC', 'type': 'number'},
+    'Тип комы (0=Нет, 1=медикаментозная, 2=различная, 3=комбинированная)': {'label': 'Тип комы', 'group': 'Шкала PRE-DELIRIC', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет комы'}, {'value': 1, 'label': 'Медикаментозная'}, {'value': 2, 'label': 'Различная'}, {'value': 3, 'label': 'Комбинированная'}]},
+    'Категория поступления (0=Хирург, 1=Терапевт, 2=Травма, 3=Невролог)': {'label': 'Категория поступления', 'group': 'Шкала PRE-DELIRIC', 'type': 'select', 'options': [{'value': 0, 'label': 'Хирург'}, {'value': 1, 'label': 'Терапевт'}, {'value': 2, 'label': 'Травма'}, {'value': 3, 'label': 'Невролог'}]},
+    'Инфекция (0/1)': {'label': 'Инфекция', 'group': 'Шкала PRE-DELIRIC', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Метаболический ацидоз (0/1)': {'label': 'Метаболический ацидоз', 'group': 'Шкала PRE-DELIRIC', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'Использование морфина (0=Нет, 1=0.01-7.1, 2=7.2-18.6, 3=>18.6)': {'label': 'Использование морфина', 'group': 'Шкала PRE-DELIRIC', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': '0.01-7.1'}, {'value': 2, 'label': '7.2-18.6'}, {'value': 3, 'label': '>18.6'}]},
+    'Использование седативных ЛС (0/1)': {'label': 'Использование седативных ЛС', 'group': 'Шкала PRE-DELIRIC', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+
+    'Контаминированная/грязная рана (0/1)': {'label': 'Контаминированная/грязная рана', 'group': 'Шкала NHSN', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]},
+    'ASA класс': {'label': 'ASA класс', 'group': 'Шкала NHSN', 'type': 'number'},
+    'Иммуносупрессия (0/1)': {'label': 'Иммуносупрессия', 'group': 'Шкала NHSN', 'type': 'select', 'options': [{'value': 0, 'label': 'Нет'}, {'value': 1, 'label': 'Да'}]}
 }
 
-LVEF_MAP = {
-    1: 55.0,
-    2: 40.0,
-    3: 25.0,
 
-    "Нормальная (≥50%)": 55.0,
-    "Нормальная": 55.0,
-
-    "Умеренно сниженная (30-49%)": 40.0,
-    "Умеренно снижена (30-49%)": 40.0,
-    "Умеренно": 40.0,
-
-    "Тяжелая дисфункция (<30%)": 25.0,
-    "Тяжелая дисфункция": 25.0,
-    "Тяжелая": 25.0,
-}
 def to_bool(v):
-    return str(v).lower() in ["1", "true", "yes", "да", "экстренная"]
+    return str(v).lower() in ["1", "true", "yes", "да", "экстренная", "ургентная"]
+
+
 @router.post("/calculate-all", response_model=UIAllMetricsResponse)
 async def ui_calculate_all(request: Request):
     try:
         raw_json = await request.json()
-        # Получаем данные и calculator_id
         input_data = raw_json.get("features", raw_json)
         calculator_id = raw_json.get("calculator_id", "all")
 
-        normalized = {}
-        # ... (существующая логика нормализации без изменений)
-        normalized["Пол (0=жен,1=муж)"] = input_data.get("Пол (0=жен,1=муж)", input_data.get("Пол", 1))
-        normalized["Возраст (лет)"] = input_data.get("Возраст (лет)", input_data.get("Возраст", 60))
-        normalized["Вес (кг)"] = input_data.get("Вес (кг)", input_data.get("Вес", 75.0))
-        normalized["Рост (м)"] = input_data.get("Рост (м)", input_data.get("Рост", 175.0))
-        normalized["Креатинин в ОРИТ (мкмоль/л)"] = input_data.get("Креатинин в ОРИТ (мкмоль/л)", input_data.get("Креатинин до операции (мкмоль/л)", input_data.get("creatinine", 85.0)))
-        
-        lvef_raw = input_data.get("Категория ФВ ЛЖ", input_data.get("lvef", 55.0))
+        # Парсеры
+        def extract_bool(keys_list) -> int:
+            for key in keys_list:
+                if key in input_data:
+                    return 1 if to_bool(input_data[key]) else 0
+            return 0
 
-        def normalize_lvef(x):
-            if x in LVEF_MAP:
-                return LVEF_MAP[x]
+        def extract_numeric(keys_list, default=0.0) -> float:
+            for key in keys_list:
+                if key in input_data:
+                    try: return float(input_data[key])
+                    except: pass
+            return default
 
-            # если пришёл int/float строкой
-            try:
-                val = int(x)
-                if val in LVEF_MAP:
-                    return LVEF_MAP[val]
-            except:
-                pass
+        # Нормализация
+        normalized = {
+            "sex": int(extract_numeric(["Пол (0=жен,1=муж)", "Пол", "sex"], 1)),
+            "age": int(extract_numeric(["Возраст (лет)", "Возраст", "age"], 60)),
+            "weight": extract_numeric(["Вес (кг)", "Вес", "weight"], 75.0),
+            "height": extract_numeric(["Рост (м)", "Рост", "height"], 1.75),
+            
+            "copd": extract_bool(["Хронические заболевания лёгких (0/1)", "Хронические заболевания лёгких", "ХОБЛ (0/1)", "ХОБЛ", "copd"]),
+            "extracardiac_pathology": extract_bool(["Экстракардиальная артериопатия (0/1)", "Экстракардиальная артериопатия", "Атеросклероз НК (0/1)", "pad"]),
+            "neurological_dysfunction": extract_bool(["Неврологическая дисфункция (0/1)", "Неврологическая дисфункция", "neuro_dysfunction"]),
+            "previous_cardiac_surgery": extract_bool(["Предыдущая операция на сердце (0/1)", "Предыдущая операция на сердце", "previous_cardiac_surgery"]),
+            "active_endocarditis": extract_bool(["Активный эндокардит (0/1)", "Активный эндокардит", "active_endocarditis"]),
+            "critical_preop_state": extract_bool(["Критическое состояние перед операцией (0/1)", "Критическое состояние перед операцией", "critical_preop_state"]),
+            "recent_mi": extract_bool(["Недавний инфаркт миокарда (0/1)", "Недавний инфаркт миокарда", "ИМ в анамнезе (0/1)", "mi"]),
+            "diabetes": extract_bool(["Сахарный диабет (0/1)", "Сахарный диабет", "diabetes"]),
+            "diabetes_insulin": extract_bool(["Инсулинозависимый СД (0/1)", "Инсулинозависимый СД", "diabetes_insulin"]),
+            "chsn": extract_bool(["Признаки ХСН (0/1)", "Признаки ХСН", "ХСН (0/1)", "chsn"]),
+            "hypertension": extract_bool(["Артериальная гипертензия (0/1)", "Артериальная гипертензия", "Гипертония (0/1)", "hypertension"]),
+            "stroke_history": extract_bool(["Инсульт/ТИА в анамнезе (0/1)", "Инсульт/ТИА в анамнезе", "ОНМК в анамнезе (0/1)", "stroke"]),
+            "af": extract_bool(["ФП в анамнезе (0/1)", "ФП в анамнезе", "af"]),
+            
+            "creatinine": extract_numeric(["Креатинин сыворотки (мкмоль/л)", "Креатинин в ОРИТ (мкмоль/л)", "creatinine"], 85.0),
+            "hematocrit": extract_numeric(["Гематокрит (%)", "Гематокрит", "hematocrit"], 40.0),
+            "heart_rate": extract_numeric(["ЧСС (уд/мин)", "ЧСС", "heart_rate"], 75.0),
+            "systolic_bp": extract_numeric(["САД (мм рт.ст.)", "САД", "systolic_bp"], 120.0),
+            "paph_val": extract_numeric(["Лёгочная гипертензия (мм рт.ст.)", "paph_val"], 25.0),
+            "lvef": extract_numeric(["Фракция выброса ЛЖ (%)", "Фракция выброса ЛЖ", "lvef"], 55.0),
+            "urea": extract_numeric(["Мочевина (ммоль/л)", "Мочевина", "urea"], 6.0),
+            
+            "urgency": int(extract_numeric(["Экстренность операции (0=план,1=ург,2=экстр)", "Экстренность операции", "Срочность (0=план,1=экстр)", "urgency"], 0)),
+            "operation_type": int(extract_numeric(["Тип операции (0=АКШ,1=клапан,2=АКШ+клапан,3=другая)", "Тип операции", "operation_type"], 0)),
+            "cpb_duration": extract_numeric(["Длительность ИК (мин)", "Длительность ИК", "cpb_duration"], 90.0),
+            "op_duration_long": extract_bool(["Длительность операции >75 перцентиля (0/1)", "Длительность операции >75 перцентиля", "op_duration_long"]),
+            "iabp": extract_bool(["Внутриаортальная баллонная контрпульсация (0/1)", "Внутриаортальная баллонная контрпульсация", "iabp"]),
+            
+            "caprini_edema": extract_bool(["Отёк ног (0/1)", "Отёк ног"]),
+            "caprini_varicose": extract_bool(["Варикозное расширение вен (0/1)", "Варикозное расширение вен"]),
+            "caprini_pregnancy_loss": extract_bool(["Необъяснимое прерывание беременности (0/1)", "Необъяснимое прерывание беременности"]),
+            "caprini_oc_hrt": extract_bool(["Оральные контрацептивы/ЗГТ (0/1)", "Оральные контрацептивы/ЗГТ"]),
+            "caprini_sepsis_month": extract_bool(["Сепсис <1 мес (0/1)", "Сепсис <1 мес"]),
+            "caprini_ibd": extract_bool(["Воспалительные заболевания кишечника (0/1)", "Воспалительные заболевания кишечника"]),
+            "caprini_arthroscopy": extract_bool(["Артроскопия (0/1)", "Артроскопия"]),
+            "caprini_malignancy": extract_bool(["Злокачественное новообразование (0/1)", "Злокачественное новообразование"]),
+            "caprini_immobilization": extract_bool(["Обездвиженность >72 час (0/1)", "Обездвиженность >72 час"]),
+            "caprini_plaster": extract_bool(["Гипсовая иммобилизация (0/1)", "Гипсовая иммобилизация"]),
+            "caprini_cvc": extract_bool(["Центральный венозный катетер (0/1)", "Центральный венозный катетер"]),
+            "caprini_vte_history": extract_bool(["ВТЭ в анамнезе (0/1)", "ВТЭ в анамнезе"]),
+            "caprini_family_vte": extract_bool(["Семейный анамнез ВТЭ (0/1)", "Семейный анамнез ВТЭ"]),
+            "caprini_thrombophilia": extract_bool(["Врождённые тромбофилии (0/1)", "Врождённые тромбофилии"]),
+            "caprini_stroke_month": extract_bool(["Инсульт <1 мес (0/1)", "Инсульт <1 мес"]),
+            "caprini_arthroplasty": extract_bool(["Элективная артропластика (0/1)", "Элективная артропластика"]),
+            "caprini_fracture": extract_bool(["Перелом бедра/таза (0/1)", "Перелом бедра/таза"]),
+            "caprini_spine_injury": extract_bool(["Острая травма позвоночника (0/1)", "Острая травма позвоночника"]),
 
-            try:
-                return float(x)
-            except:
-                return 55.0
+            "delirium_apache": int(extract_numeric(["APACHE-II балл", "delirium_apache"], 15)),
+            "delirium_coma_type": int(extract_numeric(["Тип комы (0=Нет, 1=медикаментозная, 2=различная, 3=комбинированная)", "delirium_coma_type"], 0)),
+            "delirium_admission_type": int(extract_numeric(["Категория поступления (0=Хирург, 1=Терапевт, 2=Травма, 3=Невролог)", "delirium_admission_type"], 0)),
+            "delirium_infection": extract_bool(["Инфекция (0/1)", "Инфекция", "delirium_infection"]),
+            "delirium_acidosis": extract_bool(["Метаболический ацидоз (0/1)", "Метаболический ацидоз", "delirium_acidosis"]),
+            "delirium_morphine": int(extract_numeric(["Использование морфина (0=Нет, 1=0.01-7.1, 2=7.2-18.6, 3=>18.6)", "delirium_morphine"], 0)),
+            "delirium_sedatives": extract_bool(["Использование седативных ЛС (0/1)", "Использование седативных ЛС", "delirium_sedatives"]),
 
-        normalized["Категория ФВ ЛЖ"] = normalize_lvef(lvef_raw)
-
-        nyha_raw = input_data.get("ХСН ФК", input_data.get("nyha", 1))
-        try: normalized["ХСН ФК"] = int(nyha_raw)
-        except: normalized["ХСН ФК"] = 1
-
-        for target_alias, keys in FLAGS_MAPPING.items():
-            val = 0
-            for k in keys:
-                if k in input_data:
-                    val = input_data[k]
-                    break
-            try: normalized[target_alias] = 1 if to_bool(val) else 0
-            except: normalized[target_alias] = 0
-
-        af_val = input_data.get("ФП в анамнезе (0/1)", input_data.get("af", 0))
-        normalized["ФП в анамнезе (0/1)"] = 1 if af_val in [1, True, "1"] else 0
+            "nhsn_dirty_wound": extract_bool(["Контаминированная/грязная рана (0/1)", "Контаминированная/грязная рана"]),
+            "nhsn_asa_class": int(extract_numeric(["ASA класс", "nhsn_asa_class"], 2)),
+            "nhsn_immunosuppression": extract_bool(["Иммуносупрессия (0/1)", "Иммуносупрессия"])
+        }
 
         validated_data = PatientData(**normalized)
 
-        engine_kwargs = {
-            "age": validated_data.age, "sex": validated_data.sex,
-            "weight": validated_data.weight, "height": validated_data.height,
-            "creatinine": validated_data.creatinine, "lvef": normalized["Категория ФВ ЛЖ"],
-            "nyha": validated_data.nyha, "paph": normalized["Лёгочная гипертензия (0/1)"],
-            "hypertension": normalized["Гипертония (0/1)"], "mi": normalized["ИМ в анамнезе (0/1)"],
-            "chsn": normalized["ХСН (0/1)"], "diabetes": normalized["Сахарный диабет (0/1)"],
-            "copd": normalized["ХОБЛ (0/1)"], "stroke": normalized["ОНМК в анамнезе (0/1)"],
-            "pad": normalized["Атеросклероз НК (0/1)"], "bca": normalized["Атеросклероз БЦА (0/1)"],
-            "peptic_ulcer": normalized["Язвенная болезнь ЖКТ (0/1)"], "urgency": normalized["Срочность (0=план,1=экстр)"],
-            "af": normalized["ФП в анамнезе (0/1)"]
-        }
-
-        # Всегда считаем всё
+        # Вычисления
         bmi = ClinicalEngine.calculate_bmi(validated_data.weight, validated_data.height)
         cl_cr = ClinicalEngine.calculate_clcr(validated_data.sex, validated_data.age, validated_data.weight, validated_data.creatinine)
-        euro = ClinicalEngine.calculate_euroscore_ii(**engine_kwargs)
-        cci = ClinicalEngine.calculate_cci(**engine_kwargs)
+        euro = ClinicalEngine.calculate_euroscore_ii(validated_data)
+        crusade = ClinicalEngine.calculate_crusade(validated_data)
+        caprini = ClinicalEngine.calculate_caprini(validated_data)
+        chads = ClinicalEngine.calculate_chads_vasc(validated_data)
+        delirium = ClinicalEngine.calculate_pre_deliric(validated_data)
+        cleveland = ClinicalEngine.calculate_cleveland_thakar(validated_data)
+        resp = ClinicalEngine.calculate_resp_failure(validated_data)
+        nhsn = ClinicalEngine.calculate_nhsn_infection(validated_data)
 
         all_metrics = {
             "ИМТ (кг/м²)": {"value": bmi, **ClinicalEngine.interpret_bmi(bmi)},
             "Клиренс креатинина (мл/мин)": {"value": round(cl_cr, 1), **ClinicalEngine.interpret_clcr(cl_cr)},
-            "EuroSCORE II (%)": {"value": euro, **ClinicalEngine.interpret_euroscore(euro)},
-            "Индекс коморбидности Чарлсона": {"value": float(cci), **ClinicalEngine.interpret_cci(cci)}
+            "EuroSCORE II (Летальность %)": {"value": euro, **ClinicalEngine.interpret_euroscore(euro)},
+            "CRUSADE Bleeding (Баллы)": {"value": float(crusade), **ClinicalEngine.interpret_crusade(crusade)},
+            "Caprini VTE Risk (Баллы)": {"value": float(caprini), **ClinicalEngine.interpret_caprini(caprini)},
+            "CHA₂DS₂-VASc (Тромбоэмболии)": {"value": float(chads), **ClinicalEngine.interpret_chads(chads)},
+            "PRE-DELIRIC (Вероятность делирия %)": {"value": delirium, **ClinicalEngine.interpret_delirium(delirium)},
+            "Cleveland Clinic Thakar (Баллы)": {"value": float(cleveland), **ClinicalEngine.interpret_cleveland(cleveland)},
+            "Дыхательная недостаточность (Баллы)": {"value": float(resp), **ClinicalEngine.interpret_resp(resp)},
+            "NHSN Риск инфекции области вмешательства": {"value": float(nhsn), **ClinicalEngine.interpret_nhsn(nhsn)}
         }
-        
-        if validated_data.af:
-            chads = ClinicalEngine.calculate_chads_vasc(**engine_kwargs)
-            has_b = ClinicalEngine.calculate_has_bled(**engine_kwargs)
-            all_metrics["CHA₂DS₂-VASc"] = {"value": float(chads), **ClinicalEngine.interpret_chads(chads)}
-            all_metrics["HAS-BLED"] = {"value": float(has_b), **ClinicalEngine.interpret_has_bled(has_b)}
-            
-        # --- ИСПРАВЛЕНИЕ ОШИБКИ: Фильтрация метрик по calculator_id ---
+
         if calculator_id != "all" and calculator_id in CALCULATOR_MAPS:
             allowed_keys = CALCULATOR_MAPS[calculator_id]["metric_keys"]
             metrics = {k: v for k, v in all_metrics.items() if k in allowed_keys}
         else:
             metrics = all_metrics
-            
+
         return {"status": "success", "metrics": metrics}
 
     except Exception as e:
@@ -202,17 +277,22 @@ async def get_ui_metadata():
     
     calculators_config = {}
     for calc_id, config in CALCULATOR_MAPS.items():
+        # БЕЗОПАСНЫЙ МАППИНГ: ищем поле в Pydantic и берем его alias (русское название)
+        mapped_inputs = []
+        for name in config["fields"]:
+            field_obj = PatientData.model_fields.get(name)
+            if field_obj and field_obj.alias:
+                mapped_inputs.append(field_obj.alias)
+            else:
+                mapped_inputs.append(name)
+
         calculators_config[calc_id] = {
             "label": config["label"],
-            "required_inputs": [
-                PatientData.model_fields[name].alias or name 
-                for name in config["fields"] 
-                if name in PatientData.model_fields
-            ]
+            "required_inputs": mapped_inputs
         }
     return {
         "required_inputs": flat_inputs,
         "categorical_inputs": categorical_inputs,
         "calculators": calculators_config,
-        "field_metadata": FIELD_METADATA_BACKEND # <--- Передаем метаданные фронтенду
+        "field_metadata": FIELD_METADATA_BACKEND
     }

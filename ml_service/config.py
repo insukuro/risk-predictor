@@ -11,6 +11,6 @@ class Config:
     RISK_THRESHOLDS = {
         "low": 0.3,
         "medium": 0.7
-    }
+    } 
 
 config = Config()
