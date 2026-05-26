@@ -31,19 +31,6 @@ class CCISchema(BasePatientModel):
     peptic_ulcer: int = Field(0, alias="Язвенная болезнь ЖКТ (0/1)")
     diabetes: int = Field(0, alias="Сахарный диабет (0/1)")
 
-class EuroScoreSchema(BasePatientModel):
-    age: int = Field(..., alias="Возраст (лет)")
-    sex: int = Field(..., alias="Пол (0=жен,1=муж)")
-    weight: float = Field(..., alias="Вес (кг)")
-    creatinine: float = Field(..., alias="Креатинин в ОРИТ (мкмоль/л)")
-    pad: int = Field(0, alias="Атеросклероз НК (0/1)")
-    bca: int = Field(0, alias="Атеросклероз БЦА (0/1)")
-    copd: int = Field(0, alias="ХОБЛ (0/1)")
-    diabetes: int = Field(0, alias="Сахарный диабет (0/1)")
-    urgency: int = Field(0, alias="Срочность (0=план,1=экстр)")
-    nyha: int = Field(1, alias="ХСН ФК")
-    lvef: float = Field(55.0, alias="Категория ФВ ЛЖ")
-    paph: int = Field(0, alias="Лёгочная гипертензия (0/1)")
 
 # --- УНИВЕРСАЛЬНАЯ СХЕМА ДЛЯ ФРОНТЕНДА (ДИНАМИЧЕСКИЙ UI) ---
 class PatientData(BasePatientModel):
@@ -113,3 +100,114 @@ class UIResultItem(BaseModel):
 class UIAllMetricsResponse(BaseModel):
     status: str
     metrics: Dict[str, UIResultItem]
+    
+class CrusadeSchema(BasePatientModel):
+    sex: int = Field(..., alias="Пол (0=жен,1=муж)")
+    age: int = Field(default=60, alias="Возраст (лет)")  # ДОБАВЛЕНО
+    weight: float = Field(default=75.0, alias="Вес (кг)")  # ДОБАВЛЕНО
+    hematocrit: float = Field(..., alias="Гематокрит (%)")
+    creatinine: float = Field(..., alias="Креатинин сыворотки (мкмоль/л)")
+    heart_rate: float = Field(..., alias="ЧСС (уд/мин)")
+    systolic_bp: float = Field(..., alias="САД (мм рт.ст.)")
+    chsn: int = Field(0, alias="Признаки ХСН (0/1)")
+    extracardiac_pathology: int = Field(0, alias="Экстракардиальная артериопатия (0/1)")
+    diabetes: int = Field(0, alias="Сахарный диабет (0/1)")
+
+class CapriniSchema(BasePatientModel):
+    age: int = Field(..., alias="Возраст (лет)")
+    sex: int = Field(..., alias="Пол (0=жен,1=муж)")
+    weight: float = Field(..., alias="Вес (кг)")
+    height: float = Field(default=175.0, alias="Рост (м)")  # ДОБАВЛЕНО
+    caprini_edema: int = Field(0, alias="Отёк ног (0/1)")
+    caprini_varicose: int = Field(0, alias="Варикозное расширение вен (0/1)")
+    caprini_pregnancy_loss: int = Field(0, alias="Необъяснимое прерывание беременности (0/1)")
+    caprini_oc_hrt: int = Field(0, alias="Оральные контрацептивы/ЗГТ (0/1)")
+    caprini_sepsis_month: int = Field(0, alias="Сепсис <1 мес (0/1)")
+    caprini_ibd: int = Field(0, alias="Воспалительные заболевания кишечника (0/1)")
+    caprini_arthroscopy: int = Field(0, alias="Артроскопия (0/1)")
+    caprini_malignancy: int = Field(0, alias="Злокачественное новообразование (0/1)")
+    caprini_immobilization: int = Field(0, alias="Обездвиженность >72 час (0/1)")
+    caprini_plaster: int = Field(0, alias="Гипсовая иммобилизация (0/1)")
+    caprini_cvc: int = Field(0, alias="Центральный венозный катетер (0/1)")
+    caprini_vte_history: int = Field(0, alias="ВТЭ в анамнезе (0/1)")
+    caprini_family_vte: int = Field(0, alias="Семейный анамнез ВТЭ (0/1)")
+    caprini_thrombophilia: int = Field(0, alias="Врождённые тромбофилии (0/1)")
+    caprini_stroke_month: int = Field(0, alias="Инсульт <1 мес (0/1)")
+    caprini_arthroplasty: int = Field(0, alias="Элективная артропластика (0/1)")
+    caprini_fracture: int = Field(0, alias="Перелом бедра/таза (0/1)")
+    caprini_spine_injury: int = Field(0, alias="Острая травма позвоночника (0/1)")
+    copd: int = Field(0, alias="Хронические заболевания лёгких (0/1)")  # ДОБАВЛЕНО
+    recent_mi: int = Field(0, alias="Недавний инфаркт миокарда (0/1)")  # ДОБАВЛЕНО
+    chsn: int = Field(0, alias="Признаки ХСН (0/1)")  # ДОБАВЛЕНО
+    cpb_duration: float = Field(default=90.0, alias="Длительность ИК (мин)")  # ДОБАВЛЕНО
+    previous_cardiac_surgery: int = Field(0, alias="Предыдущая операция на сердце (0/1)")  # ДОБАВЛЕНО
+
+class ChadsVascSchema(BasePatientModel):
+    age: int = Field(..., alias="Возраст (лет)")
+    sex: int = Field(..., alias="Пол (0=жен,1=муж)")
+    chsn: int = Field(0, alias="Признаки ХСН (0/1)")
+    hypertension: int = Field(0, alias="Артериальная гипертензия (0/1)")
+    stroke_history: int = Field(0, alias="Инсульт/ТИА в анамнезе (0/1)")
+    extracardiac_pathology: int = Field(0, alias="Экстракардиальная артериопатия (0/1)")
+    diabetes: int = Field(0, alias="Сахарный диабет (0/1)")
+    lvef: float = Field(default=55.0, alias="Фракция выброса ЛЖ (%)")  # ДОБАВЛЕНО
+    recent_mi: int = Field(0, alias="Недавний инфаркт миокарда (0/1)")  # ДОБАВЛЕНО
+
+class ClevelandThakarSchema(BasePatientModel):
+    sex: int = Field(..., alias="Пол (0=жен,1=муж)")
+    chsn: int = Field(0, alias="Признаки ХСН (0/1)")
+    diabetes: int = Field(0, alias="Сахарный диабет (0/1)")
+    diabetes_insulin: int = Field(0, alias="Инсулинозависимый СД (0/1)")  # ДОБАВЛЕНО
+    iabp: int = Field(0, alias="Внутриаортальная баллонная контрпульсация (0/1)")
+    operation_type: int = Field(..., alias="Тип операции (0-3)")
+    previous_cardiac_surgery: int = Field(0, alias="Предыдущая операция на сердце (0/1)")
+    creatinine: float = Field(..., alias="Креатинин сыворотки (мкмоль/л)")
+    lvef: float = Field(..., alias="Фракция выброса ЛЖ (%)")
+    urgency: int = Field(0, alias="Экстренность операции (0-2)")
+    copd: int = Field(0, alias="Хронические заболевания лёгких (0/1)")  # ДОБАВЛЕНО
+    
+class EuroScoreSchema(BasePatientModel):
+    age: int = Field(..., alias="Возраст (лет)")
+    sex: int = Field(..., alias="Пол (0=жен,1=муж)")
+    weight: float = Field(..., alias="Вес (кг)")
+    creatinine: float = Field(..., alias="Креатинин сыворотки (мкмоль/л)")
+    copd: int = Field(0, alias="Хронические заболевания лёгких (0/1)")
+    extracardiac_pathology: int = Field(0, alias="Экстракардиальная артериопатия (0/1)")
+    neurological_dysfunction: int = Field(0, alias="Неврологическая дисфункция (0/1)")
+    previous_cardiac_surgery: int = Field(0, alias="Предыдущая операция на сердце (0/1)")
+    active_endocarditis: int = Field(0, alias="Активный эндокардит (0/1)")
+    critical_preop_state: int = Field(0, alias="Критическое состояние перед операцией (0/1)")
+    recent_mi: int = Field(0, alias="Недавний инфаркт миокарда (0/1)")
+    diabetes_insulin: int = Field(0, alias="Инсулинозависимый СД (0/1)")
+    urgency: int = Field(0, alias="Экстренность операции (0=план,1=ург,2=экстр)")
+    paph_val: float = Field(25.0, alias="Лёгочная гипертензия (мм рт.ст.)")
+    lvef: float = Field(55.0, alias="Фракция выброса ЛЖ (%)")
+
+class PreDeliricSchema(BasePatientModel):
+    age: int = Field(..., alias="Возраст (лет)")
+    delirium_apache: int = Field(..., alias="APACHE-II балл")
+    delirium_coma_type: int = Field(0, alias="Тип комы (0-3)")
+    delirium_admission_type: int = Field(0, alias="Категория поступления (0-3)")
+    delirium_infection: int = Field(0, alias="Инфекция (0/1)")
+    delirium_acidosis: int = Field(0, alias="Метаболический ацидоз (0/1)")
+    delirium_morphine: int = Field(0, alias="Использование морфина (0-3)")
+    delirium_sedatives: int = Field(0, alias="Использование седативных ЛС (0/1)")
+    urea: float = Field(..., alias="Мочевина (ммоль/л)")
+    urgency: int = Field(0, alias="Экстренность операции (0=план,1=ург,2=экстр)") # Добавлено
+
+class RespFailureSchema(BasePatientModel):
+    age: int = Field(..., alias="Возраст (лет)")
+    weight: float = Field(..., alias="Вес (кг)") # Добавлено
+    height: float = Field(..., alias="Рост (м)") # Добавлено
+    copd: int = Field(0, alias="Хронические заболевания лёгких (0/1)")
+    operation_type: int = Field(..., alias="Тип операции (0-3)")
+    urgency: int = Field(0, alias="Экстренность операции (0-2)")
+    cpb_duration: float = Field(default=90.0, alias="Длительность ИК (мин)")
+
+class NhsnInfectionSchema(BasePatientModel):
+    weight: float = Field(..., alias="Вес (кг)") # Добавлено
+    height: float = Field(..., alias="Рост (м)") # Добавлено
+    nhsn_dirty_wound: int = Field(0, alias="Контаминированная/грязная рана (0/1)")
+    nhsn_asa_class: int = Field(..., alias="ASA класс")
+    nhsn_immunosuppression: int = Field(0, alias="Иммуносупрессия (0/1)")
+    op_duration_long: int = Field(0, alias="Длительность операции >75 перцентиля (0/1)")

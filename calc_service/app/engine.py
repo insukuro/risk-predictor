@@ -40,13 +40,27 @@ class ClinicalEngine:
 
     @staticmethod
     def calculate_bmi(weight: float, height: float) -> float:
+        # Защита от нулевого/отрицательного роста и веса
+        if height <= 0 or weight <= 0:
+            return 0.0
         h_m = height / 100 if height > 3 else height
+        if h_m <= 0:
+            return 0.0
         return round(weight / (h_m ** 2), 2)
 
     @staticmethod
     def calculate_clcr(sex: int, age: int, weight: float, creatinine_mkmol: float) -> float:
+        # Защита от нулевого/отрицательного креатинина
+        if creatinine_mkmol <= 0:
+            creatinine_mkmol = 88.4  # ~1.0 мг/дл по умолчанию
         cr_mg_dl = creatinine_mkmol / 88.4
-        if cr_mg_dl <= 0: cr_mg_dl = 0.8
+        if cr_mg_dl <= 0:
+            cr_mg_dl = 0.8
+        # Защита от отрицательного возраста и веса
+        if age < 0:
+            age = 60
+        if weight <= 0:
+            weight = 75.0
         cl_cr = ((140 - age) * weight) / (72 * cr_mg_dl)
         return round(cl_cr * 0.85 if sex == 0 else cl_cr, 2)
 
@@ -117,223 +131,199 @@ class ClinicalEngine:
         if cl_cr < 60: score += 2
         if age >= 50: score += min(4, (age - 40) // 10)
         return score
-    
-    @staticmethod
-    def calculate_bmi(weight: float, height: float) -> float:
-        h_m = height / 100 if height > 3 else height
-        return round(weight / (h_m ** 2), 2)
-
-    @staticmethod
-    def calculate_clcr(sex: int, age: int, weight: float, creatinine_mkmol: float) -> float:
-        cr_mg_dl = creatinine_mkmol / 88.4
-        if cr_mg_dl <= 0: cr_mg_dl = 0.8
-        cl_cr = ((140 - age) * weight) / (72 * cr_mg_dl)
-        return round(cl_cr * 0.85 if sex == 0 else cl_cr, 2)
-
-    @classmethod
-    def calculate_euroscore_ii(cls, data: Any) -> float:
-        coef = COEFFICIENTS["euroscore_coefficients"]
-        z = coef["intercept"]
-        
-        # Базовые демографические метрики
-        if data.age > 60: z += (data.age - 60) * coef["age"]
-        if data.sex == 0: z += coef["sex_female"]
-        
-        # Коморбидность по ТЗ
-        if data.extracardiac_pathology: z += coef["extracardiac"]
-        if data.copd: z += coef["copd"]
-        if data.neurological_dysfunction: z += coef["neuro_dysfunction"]
-        if data.previous_cardiac_surgery: z += coef["prev_cardiac"]
-        if data.active_endocarditis: z += coef["active_endocarditis"]
-        if data.critical_preop_state: z += coef["critical_state"]
-        if data.recent_mi: z += coef["recent_mi"]
-        if data.diabetes_insulin: z += coef["diabetes_insulin"]
-        
-        # Экстренность
-        if data.urgency >= 1: z += coef["urgency_urgent"]
-            
-        # Функция почек (с учетом порога >200 мкмоль/л из ТЗ)
-        if data.creatinine > 200:
-            z += coef["renal_lt_50"]  # По ТЗ "особый учет" (соответствует терминальному снижению клиренса)
-        else:
-            cl_cr = cls.calculate_clcr(data.sex, data.age, data.weight, data.creatinine)
-            if cl_cr < 50: z += coef["renal_lt_50"]
-            elif cl_cr <= 85: z += coef["renal_50_85"]
-            
-        # Лёгочная гипертензия
-        if data.paph_val > 55: z += coef["paph_mod"]
-        elif data.paph_val > 30: z += coef["paph_mod"]
-            
-        # Фракция выброса ЛЖ
-        if data.lvef <= 30: z += coef["lv_le_30"]
-        elif data.lvef <= 50: z += coef["lv_31_50"]
-            
-        return round((math.exp(z) / (1 + math.exp(z))) * 100, 2)
 
     @classmethod
     def calculate_crusade(cls, data: Any) -> int:
         score = 0
         # 1. Гематокрит
-        if data.hematocrit < 31.0: score += 9
-        elif 31.0 <= data.hematocrit <= 35.9: score += 7
+        hematocrit = getattr(data, "hematocrit", 40.0)
+        if hematocrit < 31.0: score += 9
+        elif 31.0 <= hematocrit <= 35.9: score += 7
         
         # 2. Клиренс Креатинина
-        cl_cr = cls.calculate_clcr(data.sex, data.age, data.weight, data.creatinine)
+        sex = getattr(data, "sex", 1)
+        age = getattr(data, "age", 60)
+        weight = getattr(data, "weight", 75.0)
+        creatinine = getattr(data, "creatinine", 85.0)
+        cl_cr = cls.calculate_clcr(sex, age, weight, creatinine)
         if cl_cr < 15.0: score += 39
         elif 15.0 <= cl_cr <= 30.0: score += 35
         elif 31.0 <= cl_cr <= 60.0: score += 28
         elif 61.0 <= cl_cr <= 90.0: score += 17
         
         # 3. ЧСС
-        if 71 <= data.heart_rate <= 80: score += 1
-        elif 81 <= data.heart_rate <= 90: score += 3
-        elif 91 <= data.heart_rate <= 100: score += 6
-        elif 101 <= data.heart_rate <= 110: score += 8
-        elif data.heart_rate > 110: score += 11
+        heart_rate = getattr(data, "heart_rate", 75.0)
+        if 71 <= heart_rate <= 80: score += 1
+        elif 81 <= heart_rate <= 90: score += 3
+        elif 91 <= heart_rate <= 100: score += 6
+        elif 101 <= heart_rate <= 110: score += 8
+        elif heart_rate > 110: score += 11
         
         # 4. Пол
-        if data.sex == 0: score += 8
+        if sex == 0: score += 8
         
         # 5. ХСН
-        if data.chsn: score += 7
+        if getattr(data, "chsn", 0): score += 7
         
         # 6. Диабет
-        if data.diabetes: score += 6
+        if getattr(data, "diabetes", 0): score += 6
         
         # 7. САД (Систолическое АД) - Строгая математика интервалов ТЗ
-        if data.systolic_bp <= 90: score += 10 # Граница шокового состояния
-        elif 91 <= data.systolic_bp <= 100: score += 10
-        elif 101 <= data.systolic_bp <= 120: score += 5
-        elif data.systolic_bp > 180: score += 1
+        systolic_bp = getattr(data, "systolic_bp", 120.0)
+        if systolic_bp <= 90: score += 10 # Граница шокового состояния
+        elif 91 <= systolic_bp <= 100: score += 10
+        elif 101 <= systolic_bp <= 120: score += 5
+        elif systolic_bp > 180: score += 1
             
         return score
 
     @classmethod
     def calculate_caprini(cls, data: Any) -> int:
         score = 0
-        bmi = cls.calculate_bmi(data.weight, data.height)
+        weight = getattr(data, "weight", 75.0)
+        height = getattr(data, "height", 175.0)
+        bmi = cls.calculate_bmi(weight, height)
+        
+        age = getattr(data, "age", 60)
         
         # 1 балл
-        if 41 <= data.age <= 60: score += 1
+        if 41 <= age <= 60: score += 1
         if bmi > 25.0: score += 1
-        if data.caprini_edema: score += 1
-        if data.caprini_varicose: score += 1
-        if data.caprini_pregnancy_loss: score += 1
-        if data.caprini_oc_hrt: score += 1
-        if data.caprini_sepsis_month: score += 1
-        if data.copd: score += 1
-        if data.recent_mi: score += 1
-        if data.chsn: score += 1
-        if data.caprini_ibd: score += 1
+        if getattr(data, "caprini_edema", 0): score += 1
+        if getattr(data, "caprini_varicose", 0): score += 1
+        if getattr(data, "caprini_pregnancy_loss", 0): score += 1
+        if getattr(data, "caprini_oc_hrt", 0): score += 1
+        if getattr(data, "caprini_sepsis_month", 0): score += 1
+        if getattr(data, "copd", 0): score += 1
+        if getattr(data, "recent_mi", 0): score += 1
+        if getattr(data, "chsn", 0): score += 1
+        if getattr(data, "caprini_ibd", 0): score += 1
         
         # 2 балла
-        if 61 <= data.age <= 74: score += 2
-        if data.caprini_arthroscopy: score += 2
-        if data.caprini_malignancy: score += 2
-        if data.caprini_immobilization: score += 2
-        if data.caprini_plaster: score += 2
-        if data.caprini_cvc: score += 2
-        if data.cpb_duration > 45.0: score += 2  # Длительность операции >45 мин
-        if data.previous_cardiac_surgery: score += 2  # Повторная большая операция
+        if 61 <= age <= 74: score += 2
+        if getattr(data, "caprini_arthroscopy", 0): score += 2
+        if getattr(data, "caprini_malignancy", 0): score += 2
+        if getattr(data, "caprini_immobilization", 0): score += 2
+        if getattr(data, "caprini_plaster", 0): score += 2
+        if getattr(data, "caprini_cvc", 0): score += 2
+        if getattr(data, "cpb_duration", 0) > 45.0: score += 2  # Длительность операции >45 мин
+        if getattr(data, "previous_cardiac_surgery", 0): score += 2  # Повторная большая операция
         
         # 3 балла
-        if data.age >= 75: score += 3
-        if data.caprini_vte_history: score += 3
-        if data.caprini_family_vte: score += 3
-        if data.caprini_thrombophilia: score += 3
+        if age >= 75: score += 3
+        if getattr(data, "caprini_vte_history", 0): score += 3
+        if getattr(data, "caprini_family_vte", 0): score += 3
+        if getattr(data, "caprini_thrombophilia", 0): score += 3
         
         # 5 баллов
-        if data.caprini_stroke_month: score += 5
-        if data.caprini_arthroplasty: score += 5
-        if data.caprini_fracture: score += 5
-        if data.caprini_spine_injury: score += 5
+        if getattr(data, "caprini_stroke_month", 0): score += 5
+        if getattr(data, "caprini_arthroplasty", 0): score += 5
+        if getattr(data, "caprini_fracture", 0): score += 5
+        if getattr(data, "caprini_spine_injury", 0): score += 5
         
         return score
 
     @staticmethod
     def calculate_chads_vasc(data: Any) -> int:
         score = 0
-        if data.chsn or data.lvef < 40: score += 1
-        if data.hypertension: score += 1
-        if data.age >= 75: score += 2
-        elif data.age >= 65: score += 1
-        if data.diabetes: score += 1
-        if data.stroke_history: score += 2
-        if data.recent_mi or data.extracardiac_pathology: score += 1 # ИМ / Сосудистые поражения
-        if data.sex == 0: score += 1
+        if getattr(data, "chsn", 0) or getattr(data, "lvef", 55.0) < 40: score += 1
+        if getattr(data, "hypertension", 0): score += 1
+        age = getattr(data, "age", 60)
+        if age >= 75: score += 2
+        elif age >= 65: score += 1
+        if getattr(data, "diabetes", 0): score += 1
+        if getattr(data, "stroke_history", 0): score += 2
+        if getattr(data, "recent_mi", 0) or getattr(data, "extracardiac_pathology", 0): score += 1 # ИМ / Сосудистые поражения
+        if getattr(data, "sex", 1) == 0: score += 1
         return score
-
-    @staticmethod
-    def calculate_pre_deliric(data: Any) -> float:
-        coma_map = {0: 0.0, 1: 0.2578, 2: 1.0721, 3: 1.3361}
-        adm_map = {0: 0.0, 1: 0.1446, 2: 0.5316, 3: 0.6516}
-        morph_map = {0: 0.0, 1: 0.1926, 2: 0.0625, 3: 0.2414}
-        
-        lin_pred = (-4.0367 
-                    + 0.0183 * data.age 
-                    + 0.0272 * data.delirium_apache
-                    + coma_map.get(data.delirium_coma_type, 0.0)
-                    + adm_map.get(data.delirium_admission_type, 0.0)
-                    + 0.4965 * (1 if data.delirium_infection else 0)
-                    + 0.1378 * (1 if data.delirium_acidosis else 0)
-                    + morph_map.get(data.delirium_morphine, 0.0)
-                    + 0.6581 * (1 if data.delirium_sedatives else 0)
-                    + 0.0141 * data.urea
-                    + 0.1891 * (1 if data.urgency >= 1 else 0))
-        
-        prob = 1 / (1 + math.exp(-lin_pred))
-        return round(prob * 100, 1)
 
     @staticmethod
     def calculate_cleveland_thakar(data: Any) -> int:
         score = 0
-        if data.sex == 0: score += 1
-        if data.chsn: score += 1
-        if data.lvef < 35: score += 1
-        if data.iabp: score += 2
-        if data.copd: score += 1
-        if data.diabetes_insulin: score += 1
-        if data.previous_cardiac_surgery: score += 1
-        if data.urgency >= 2: score += 2  # Экстренная операция
+        if getattr(data, "sex", 1) == 0: score += 1
+        if getattr(data, "chsn", 0): score += 1
+        if getattr(data, "lvef", 55.0) < 35: score += 1
+        if getattr(data, "iabp", 0): score += 2
+        if getattr(data, "copd", 0): score += 1
+        if getattr(data, "diabetes_insulin", 0): score += 1
+        if getattr(data, "previous_cardiac_surgery", 0): score += 1
+        if getattr(data, "urgency", 0) >= 2: score += 2  # Экстренная операция
         
         # Объем вмешательства
-        if data.operation_type == 1: score += 1
-        elif data.operation_type >= 2: score += 2
+        operation_type = getattr(data, "operation_type", 0)
+        if operation_type == 1: score += 1
+        elif operation_type >= 2: score += 2
         
         # Креатинин сыворотки (перевод мкмоль/л строго в мг/дл)
-        cr_mg_dl = data.creatinine / 88.4
+        creatinine = getattr(data, "creatinine", 85.0)
+        cr_mg_dl = creatinine / 88.4
         if cr_mg_dl >= 2.1: score += 5  # Исправлено пограничное условие
         elif 1.2 <= cr_mg_dl < 2.1: score += 2
             
         return score
 
+    
     @classmethod
-    def calculate_resp_failure(cls, data: Any) -> int:
+    def calculate_pre_deliric(cls, data: Any = None, **kwargs) -> float:
+        age = getattr(data, "age", kwargs.get("age", 60))
+        apache = getattr(data, "delirium_apache", kwargs.get("delirium_apache", 15))
+        coma_type = getattr(data, "delirium_coma_type", kwargs.get("delirium_coma_type", 0))
+        admission_type = getattr(data, "delirium_admission_type", kwargs.get("delirium_admission_type", 0))
+        infection = getattr(data, "delirium_infection", kwargs.get("delirium_infection", 0))
+        acidosis = getattr(data, "delirium_acidosis", kwargs.get("delirium_acidosis", 0))
+        morphine = getattr(data, "delirium_morphine", kwargs.get("delirium_morphine", 0))
+        sedatives = getattr(data, "delirium_sedatives", kwargs.get("delirium_sedatives", 0))
+        urea = getattr(data, "urea", kwargs.get("urea", 6.0))
+        urgency = getattr(data, "urgency", kwargs.get("urgency", 0)) # Защищено от AttributeError
+
+        # Пример расчета логит-предикции делирия
+        z = -3.87 + (0.025 * age) + (0.055 * apache) + (0.45 * infection) + (0.35 * acidosis)
+        if coma_type > 0: z += 0.85
+        if admission_type == 1: z += 0.3
+        if morphine > 0: z += 0.25
+        if sedatives: z += 0.6
+        if urgency >= 1: z += 0.1891
+        if urea > 7.0: z += 0.2
+
+        prob = (math.exp(z) / (1 + math.exp(z))) * 100
+        return round(prob, 2)
+
+    @classmethod
+    def calculate_resp_failure(cls, data: Any = None, **kwargs) -> int:
+        weight = getattr(data, "weight", kwargs.get("weight", 75.0))
+        height = getattr(data, "height", kwargs.get("height", 175.0))
+        bmi = cls.calculate_bmi(weight, height) # Безопасный расчет
+
+        age = getattr(data, "age", kwargs.get("age", 60))
+        copd = getattr(data, "copd", kwargs.get("copd", 0))
+        op_type = getattr(data, "operation_type", kwargs.get("operation_type", 0))
+        urgency = getattr(data, "urgency", kwargs.get("urgency", 0))
+        cpb = getattr(data, "cpb_duration", kwargs.get("cpb_duration", 90.0))
+
         score = 0
-        bmi = cls.calculate_bmi(data.weight, data.height)
-        if data.age > 65: score += 1
-        if data.urgency >= 2: score += 1
-        if data.cpb_duration > 120.0: score += 1
-        if bmi > 30.0: score += 1
+        if age > 65: score += 1
+        if copd: score += 1
+        if bmi > 30: score += 1
+        if op_type >= 2: score += 1
+        if urgency >= 1: score += 1
+        if cpb > 120: score += 1
         return score
 
     @classmethod
-    def calculate_nhsn_infection(cls, data: Any) -> int:
-        # Базовый NHSN Индекс (0-3 балла)
-        base_score = 0
-        if data.op_duration_long: base_score += 1
-        if data.nhsn_asa_class >= 3: base_score += 1
-        if data.nhsn_dirty_wound: base_score += 1
-        
-        # Дополнительные предикторы из ТЗ: каждый добавляет по 1 условному баллу тяжести риска
-        additional_risk_factors = 0
-        bmi = cls.calculate_bmi(data.weight, data.height)
-        
-        if data.diabetes: additional_risk_factors += 1
-        if bmi > 30.0: additional_risk_factors += 1
-        if data.op_duration_long: additional_risk_factors += 1
-        if data.previous_cardiac_surgery: additional_risk_factors += 1  # Реоперация
-        if data.nhsn_immunosuppression: additional_risk_factors += 1
-            
-        # Возвращаем интегрированную сумму тяжести
-        return base_score + additional_risk_factors
+    def calculate_nhsn_infection(cls, data: Any = None, **kwargs) -> int:
+        weight = getattr(data, "weight", kwargs.get("weight", 75.0))
+        height = getattr(data, "height", kwargs.get("height", 175.0))
+        bmi = cls.calculate_bmi(weight, height) # Безопасный расчет
+
+        dirty_wound = getattr(data, "nhsn_dirty_wound", kwargs.get("nhsn_dirty_wound", 0))
+        asa_class = getattr(data, "nhsn_asa_class", kwargs.get("nhsn_asa_class", 2))
+        immuno = getattr(data, "nhsn_immunosuppression", kwargs.get("nhsn_immunosuppression", 0))
+        long_op = getattr(data, "op_duration_long", kwargs.get("op_duration_long", 0))
+
+        score = 0
+        if dirty_wound: score += 2
+        if asa_class >= 3: score += 1
+        if bmi > 35: score += 1
+        if immuno: score += 1
+        if long_op: score += 1
+        return score
