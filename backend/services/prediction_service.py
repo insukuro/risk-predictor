@@ -1,158 +1,95 @@
+import hashlib
+import json
 from datetime import datetime
 from typing import Dict, Any, List, Optional
+
 from sqlalchemy.orm import Session, joinedload
 
 from backend.db.models import ClinicalData, Prediction, Operation
 from backend.clients.ml_client import ml_client
-
-# Маппинг: фича в ML-модели -> системный эндпоинт калькулятора в calc_service
-ML_TO_CALC_MAPPING = {
-    "EuroSCORE II (%)": "euroscore",
-    "Индекс Чарлсона": "cci",
-    "ИМТ": "bmi",
-    "ИМТ (кг/м²)": "bmi",
-    "Клиренс креатинина": "clcr"
-}
-
-CALC_TO_ML_MAPPING = {v: k for k, v in ML_TO_CALC_MAPPING.items()}
-
-# Спецификация клинических блоков для идеального UX/UI формы фронтенда
-FIELD_METADATA = {
-    # Блок 1: Общая информация
-    "Возраст (лет)": {"group": "Общая информация", "order": 1, "type": "number", "min": 0, "max": 120, "placeholder": "Пример: 65"},
-    "Пол (0=жен,1=муж)": {"group": "Общая информация", "order": 2, "type": "select", "options": [{"value": 0, "label": "Женский"}, {"value": 1, "label": "Мужской"}]},
-    "Рост (м)": {"group": "Общая информация", "order": 3, "type": "number", "min": 0.5, "max": 2.5, "step": 0.01, "placeholder": "Пример: 1.75"},
-    "Вес (кг)": {"group": "Общая информация", "order": 4, "type": "number", "min": 10, "max": 250, "placeholder": "Пример: 80"},
-
-    # Блок 2: Анамнез
-    "Гипертония (0/1)": {"group": "Анамнез и коморбидность", "order": 5, "type": "boolean", "label": "Артериальная гипертензия"},
-    "Сахарный диабет (0/1)": {"group": "Анамнез и коморбидность", "order": 6, "type": "boolean", "label": "Сахарный диабет"},
-    "ХОБЛ (0/1)": {"group": "Анамнез и коморбидность", "order": 7, "type": "boolean", "label": "ХОБЛ (Легочная патология)"},
-    "ОНМК в анамнезе (0/1)": {"group": "Анамнез и коморбидность", "order": 8, "type": "boolean", "label": "ОНМК / Инсульт в анамнезе"},
-    "Язвенная болезнь ЖКТ (0/1)": {"group": "Анамнез и коморбидность", "order": 9, "type": "boolean", "label": "Язвенная болезнь ЖКТ"},
-    "Лёгочная гипертензия (0/1)": {"group": "Анамнез и коморбидность", "order": 10, "type": "boolean", "label": "Легочная гипертензия"},
-    "ФП в анамнезе (0/1)": {"group": "Анамнез и коморбидность", "order": 11, "type": "boolean", "label": "Фибрилляция предсердий в анамнезе"},
-    "Аневризма аорты (0/1)": {"group": "Анамнез и коморбидность", "order": 12, "type": "boolean", "label": "Аневризма аорты"},
-    "Подагра (0/1)": {"group": "Анамнез и коморбидность", "order": 13, "type": "boolean", "label": "Подагра"},
-    "МКБ (0/1)": {"group": "Анамнез и коморбидность", "order": 14, "type": "boolean", "label": "МКБ (Мочекаменная болезнь)"},
-    "Атеросклероз БЦА (0/1)": {"group": "Анамнез и коморбидность", "order": 15, "type": "boolean", "label": "Атеросклероз БЦА"},
-    "Атеросклероз НК (0/1)": {"group": "Анамнез и коморбидность", "order": 16, "type": "boolean", "label": "Атеросклероз нижних конечностей"},
-    "Гипотиреоз (0/1)": {"group": "Анамнез и коморбидность", "order": 17, "type": "boolean", "label": "Гипотиреоз"},
-    "Ожирение (0/1)": {"group": "Анамнез и коморбидность", "order": 18, "type": "boolean", "label": "Ожирение"},
-    "Дислипидемия (0/1)": {"group": "Анамнез и коморбидность", "order": 19, "type": "boolean", "label": "Дислипидемия"},
-    "ХСН (0/1)": {"group": "Анамнез и коморбидность", "order": 20, "type": "boolean", "label": "Хроническая сердечная недостаточность"},
-    "Ишемия миокарда на ЭКГ (0/1)": {"group": "Анамнез и коморбидность", "order": 21, "type": "boolean", "label": "Ишемия миокарда на ЭКГ"},
-    "Электролитные нарушения (0/1)": {"group": "Анамнез и коморбидность", "order": 22, "type": "boolean", "label": "Электролитные нарушения"},
-
-    # Блок 3: Кардиальный статус и операция
-    "pump (0/1)": {"group": "Статус операции и кардиометрия", "order": 23, "type": "boolean", "label": "Искусственное кровообращение (ИК) планируется?"},
-    "ФВ ЛЖ до операции (%)": {"group": "Статус операции и кардиометрия", "order": 24, "type": "number", "min": 10, "max": 85, "label": "Фракция выброса ЛЖ (%)"},
-    "Категория ФВ ЛЖ": {"group": "Статус операции и кардиометрия", "order": 25, "type": "select", "options": [
-        {"value": "Сохранённая (≥50%)", "label": "Нормальная (≥50%)"},
-        {"value": "Умеренно сниженная (40-49%)", "label": "Умеренно сниженная (40-49%)"},
-        {"value": "Сниженная (<40%)", "label": "Низкая (<40%)"}
-    ]},
-    "ХСН стадия": {"group": "Статус операции и кардиометрия", "order": 26, "type": "select", "options": [
-        {"value": "0", "label": "Нет ХСН"},
-        {"value": "I", "label": "I"},
-        {"value": "II", "label": "II"},
-        {"value": "IIA", "label": "IIA"},
-        {"value": "III", "label": "III"},
-        {"value": "IV", "label": "IV"}
-    ]},
-    "ХСН ФК": {"group": "Статус операции и кардиометрия", "order": 27, "type": "select", "options": [
-        {"value": 0, "label": "Нет ХСН"}, {"value": 1, "label": "I ФК"}, {"value": 2, "label": "II ФК"}, {"value": 3, "label": "III ФК"}, {"value": 4, "label": "IV ФК"}
-    ]},
-    "Срочность (0=план,1=экстр)": {"group": "Статус операции и кардиометрия", "order": 28, "type": "select", "options": [{"value": 0, "label": "Плановая"}, {"value": 1, "label": "Экстренная"}]},
-
-    # Блок 4: Лабораторные
-    "Креатинин до операции (мкмоль/л)": {"group": "Лабораторные показатели", "order": 29, "type": "number", "placeholder": "Ввод значения..."},
-    "Креатинин в ОРИТ (мкмоль/л)": {"group": "Лабораторные показатели", "order": 30, "type": "number", "placeholder": "Ввод значения..."},
-    "Hb до операции (г/л)": {"group": "Лабораторные показатели", "order": 31, "type": "number", "label": "Гемоглобин (г/л)"},
-    "Ht до операции (%)": {"group": "Лабораторные показатели", "order": 32, "type": "number", "label": "Гематокрит (%)"},
-    "Тромбоциты до операции (×10⁹/л)": {"group": "Лабораторные показатели", "order": 33, "type": "number"},
-    "Лейкоциты до операции (×10⁹/л)": {"group": "Лабораторные показатели", "order": 34, "type": "number"},
-    "K+ до операции (ммоль/л)": {"group": "Лабораторные показатели", "order": 35, "type": "number", "label": "Калий (ммоль/л)"},
-    "Фибриноген до операции (г/л)": {"group": "Лабораторные показатели", "order": 36, "type": "number"},
-}
-
-DEFAULT_METADATA = {"group": "Дополнительные параметры", "order": 99, "type": "number"}
+from backend.core.metadata import (
+    ML_TO_CALC_MAPPING, CALC_TO_ML_MAPPING,
+    INTRAOP_FIELDS, REDUNDANT_FIELDS, PUMP_FLAG,
+    FIELD_METADATA, DEFAULT_METADATA, GROUP_ORDER
+)
+from backend.core.config import CACHE_TTL_UI_SCHEMA, CACHE_TTL_PREDICTION
+from backend.services.cache_service import cache
 
 
 class PredictionService:
+    """Оркестратор предиктов с кэшированием UI-схемы и результатов."""
+
     
+    #  UI SCHEMA
+    
+
     @staticmethod
     async def get_ui_schema(db: Session, version: Optional[str] = None) -> Dict[str, Any]:
         """
-        Динамически формирует красивую, упорядоченную по клиническим блокам 
-        структуру (схему) полей для отрисовки высококлассного UI.
+        Динамически формирует схему полей для фронтенда.
+        Результат кэшируется, т.к. модель и калькулятор меняются редко.
         """
-        # 1. Запрашиваем у ML-сервиса список необходимых фич
+        # --- Проверка кэша ---
+        cache_key_data = {"version": version or "latest"}
+        cache_key = cache._make_key("ui_schema", cache_key_data)
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        # --- Запрос к ML ---
         ml_data = await ml_client.get_model_info(version)
-        
-        # --- ИСПРАВЛЕНИЕ: Безопасное извлечение списка фич без привязки к ключу "info" ---
+
         if "info" in ml_data and isinstance(ml_data["info"], dict):
             ml_required = ml_data["info"].get("required_features", [])
         else:
             ml_required = ml_data.get("required_features", [])
-        # ---------------------------------------------------------------------------------
 
-        # ---- ПРАВКА ДЛЯ PUMP ----
-        # Принудительно гарантируем, что флаг pump всегда присутствует в запросах интерфейса,
-        # так как он критически важен для проксирования и маршрутизации моделей бэкенда.
-        PUMP_FLAG = "pump (0/1)"
+        # Гарантируем наличие pump
         if PUMP_FLAG not in ml_required:
             ml_required.append(PUMP_FLAG)
-        # ---------------------------------------------
 
-        # 2. Запрашиваем метаданные у калькулятора шкал
+        # --- Запрос к калькулятору ---
         calc_meta = await ml_client.get_calc_metadata()
-        calculators_config = calc_meta.get("calculators", calc_meta) 
+        calculators_config = calc_meta.get("calculators", calc_meta)
 
         ui_features_set = set()
         required_calc_metrics = []
 
-        # 3. Разбираем комплексные ML-признаки на составляющие инпуты калькулятора
+        # --- Разбор ML-фич на UI-поля ---
         for feature in ml_required:
             calc_key = ML_TO_CALC_MAPPING.get(feature, feature.lower())
-            
+
             if calc_key in calculators_config:
                 required_calc_metrics.append(feature)
                 calc_data = calculators_config[calc_key]
                 inputs_needed = calc_data.get("inputs", []) if isinstance(calc_data, dict) else []
-                
-                # Загружаем базовые инпуты, если калькулятор вернул пустые массивы в метаданных
+
+                # Заполняем базовые инпуты, если калькулятор вернул пустые массивы
                 if not inputs_needed and calc_key == "euroscore":
                     inputs_needed = [
-                        "Пол (0=жен,1=муж)", "Возраст (лет)", "Вес (кг)", "Рост (м)", 
-                        "Креатинин в ОРИТ (мкмоль/л)", "Категория ФВ ЛЖ", "ХСН стадия", 
+                        "Пол (0=жен,1=муж)", "Возраст (лет)", "Вес (кг)", "Рост (м)",
+                        "Креатинин в ОРИТ (мкмоль/л)", "Категория ФВ ЛЖ", "ХСН стадия",
                         "Лёгочная гипертензия (0/1)", "Гипертония (0/1)", "Срочность (0=план,1=экстр)"
                     ]
                 elif not inputs_needed and calc_key == "cci":
                     inputs_needed = [
-                        "Возраст (лет)", "Сахарный диабет (0/1)", "ХОБЛ (0/1)", 
+                        "Возраст (лет)", "Сахарный диабет (0/1)", "ХОБЛ (0/1)",
                         "ОНМК в анамнезе (0/1)", "Язвенная болезнь ЖКТ (0/1)"
                     ]
+
                 for inp in inputs_needed:
                     ui_features_set.add(inp)
             else:
-                # Пропускаем интраоперационные и дубликаты
-                INTRAOP = {"Число вазопрессоров", "Кол-во дефибрилляций", "Число ЭДФ (из примечаний)",
-                           "ТИВА (0/1)", "Ингаляционная анестезия (0/1)", "Транексамовая кислота (0/1)",
-                           "Аминокапроновая кислота (0/1)", "CellSaver (0/1)", "CellSaver антитромбин III (0/1)",
-                           "Кустодиол в системный кровоток (0/1)", "Кардиоплегия Calafiore (0/1)", "Инотропы (0/1)"}
-                REDUNDANT = {"Пол", "Возрастная группа", "Категория ИМТ", "Срочность",
-                             "ИМТ (кг/м²)", "ОЦК (л)", "ППТ (м²)"}
-                if feature not in INTRAOP and feature not in REDUNDANT:
+                if feature not in INTRAOP_FIELDS and feature not in REDUNDANT_FIELDS:
                     ui_features_set.add(feature)
 
-        # 4. Группируем и сортируем поля для создания красивого UX
+        # --- Группировка полей ---
         groups: Dict[str, List[Dict[str, Any]]] = {}
-        
+
         for field_name in ui_features_set:
             meta = FIELD_METADATA.get(field_name, DEFAULT_METADATA.copy())
             group_name = meta["group"]
-            
+
             field_structure = {
                 "id": field_name,
                 "label": meta.get("label", field_name),
@@ -164,34 +101,25 @@ class PredictionService:
                 "placeholder": meta.get("placeholder", ""),
                 "options": meta.get("options", [])
             }
-            
+
             if group_name not in groups:
                 groups[group_name] = []
             groups[group_name].append(field_structure)
 
-        # Сортируем поля внутри каждой группы согласно клиническому порядку (order)
+        # --- Сортировка ---
         for group_name in groups:
             groups[group_name] = sorted(groups[group_name], key=lambda x: x["order"])
 
-        # Превращаем в красивый отсортированный список блоков для фронтенда
-        group_order = ["Общая информация", "Анамнез и коморбидность", "Статус операции и кардиометрия", "Лабораторные показатели"]
         ui_blocks = []
-        for g_name in group_order:
+        for g_name in GROUP_ORDER:
             if g_name in groups:
-                ui_blocks.append({
-                    "block_name": g_name,
-                    "fields": groups[g_name]
-                })
-        
-        # Добавляем группы, не вошедшие в стандартный список (если появились новые)
-        for g_name, g_fields in groups.items():
-            if g_name not in group_order:
-                ui_blocks.append({
-                    "block_name": g_name,
-                    "fields": g_fields
-                })
+                ui_blocks.append({"block_name": g_name, "fields": groups[g_name]})
 
-        return {
+        for g_name, g_fields in groups.items():
+            if g_name not in GROUP_ORDER:
+                ui_blocks.append({"block_name": g_name, "fields": g_fields})
+
+        result = {
             "available_versions": ml_data.get("available_versions", []),
             "current_version": ml_data.get("current_version", ml_data.get("version", "")),
             "ui_schema": {
@@ -200,14 +128,72 @@ class PredictionService:
             }
         }
 
+        # --- Сохранение в кэш ---
+        cache.set(cache_key, result, ttl_seconds=CACHE_TTL_UI_SCHEMA)
+        return result
+
+    
+    #  DEMO DATA
+    
+
     @staticmethod
-    async def perform_pure_prediction(features: Dict[str, Any], version: str, required_metrics: Optional[List[str]] = None) -> Dict[str, Any]:
-        """API-First пайплайн предсказания (Сырые данные -> Calc API -> Мердж -> ML)."""
+    async def get_ui_demo_data(db: Session, version: str) -> Dict[str, Any]:
+        """
+        Запрашивает сырые демо-данные у ML-сервиса и фильтрует их
+        строго по полям, которые запросил фронтенд в ui_schema.
+        """
+        raw_demo_data = await ml_client.get_demo_data(version)
+        schema_data = await PredictionService.get_ui_schema(db, version)
+
+        allowed_ui_fields = set()
+        for block in schema_data["ui_schema"]["form_blocks"]:
+            for field in block["fields"]:
+                allowed_ui_fields.add(field["id"])
+
+        filtered_demo = {}
+        for key, value in raw_demo_data.items():
+            if key in allowed_ui_fields:
+                filtered_demo[key] = value
+
+        if PUMP_FLAG in allowed_ui_fields and PUMP_FLAG not in filtered_demo:
+            filtered_demo[PUMP_FLAG] = 1
+
+        return filtered_demo
+
+    
+    #  PURE PREDICTION
+    
+
+    @staticmethod
+    async def perform_pure_prediction(
+        features: Dict[str, Any],
+        version: str,
+        required_metrics: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        API-First пайплайн: Сырые данные → Calc API → Мердж → ML.
+        Результат кэшируется для одинаковых входных данных.
+        """
+        # --- Проверка кэша ---
+        cache_key_data = {
+            "features": features,
+            "version": version,
+            "metrics": required_metrics or []
+        }
+        cache_key = cache._make_key("prediction", cache_key_data)
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        # --- Расчёт метрик через калькулятор ---
         calc_results = {}
+
         if required_metrics:
-            calc_endpoints = [ML_TO_CALC_MAPPING.get(m, m.lower()) for m in required_metrics]
+            calc_endpoints = [
+                ML_TO_CALC_MAPPING.get(m, m.lower()) for m in required_metrics
+            ]
             raw_calc_outputs = await ml_client.calculate_pure_metrics(calc_endpoints, features)
-            
+
             for key, value in raw_calc_outputs.items():
                 matched_ml_key = None
                 for calc_name, ml_name in CALC_TO_ML_MAPPING.items():
@@ -221,13 +207,20 @@ class PredictionService:
         else:
             calc_results = await ml_client.calculate_batch(features)
 
+        # --- Мердж фич и вызов ML ---
         full_features = {**features, **calc_results}
         full_features.pop("status", None)
 
-        # Вызов ML сервиса для предсказания
         ml_result = await ml_client.predict(full_features, version)
         ml_result["used_features"] = calc_results
+
+        # --- Сохранение в кэш ---
+        cache.set(cache_key, ml_result, ttl_seconds=CACHE_TTL_PREDICTION)
         return ml_result
+
+    
+    #  UI PREDICTION (с сохранением в БД)
+    
 
     @staticmethod
     async def process_ui_prediction(
@@ -236,7 +229,7 @@ class PredictionService:
         version: str,
         operation_id: Optional[int] = None
     ) -> Dict[str, Any]:
-        """Оркестратор UI слоя (с поддержкой сохранения в БД и структуры мультиклассовости)."""
+        """Оркестратор UI слоя с поддержкой сохранения в БД и мультиклассовости."""
         if operation_id:
             op_exists = db.query(Operation).filter(Operation.id == operation_id).first()
             if not op_exists:
@@ -245,14 +238,13 @@ class PredictionService:
         schema_data = await PredictionService.get_ui_schema(db, version)
         needed_metrics = schema_data["ui_schema"]["calculated_metrics_needed"]
 
-        # Получаем результат от пайплайна
-        ml_result = await PredictionService.perform_pure_prediction(features, version, needed_metrics)
+        ml_result = await PredictionService.perform_pure_prediction(
+            features, version, needed_metrics
+        )
 
-        # Поддержка структуры под мультикласс (закладываем маппинг targets)
         response_data = {
             "risk_score": ml_result.get("risk_score"),
             "risk_level": ml_result.get("risk_level"),
-            # Если новая модель уже вернула мультиклассовый массив targets, прокидываем его, иначе инициализируем пустой
             "targets": ml_result.get("targets", [
                 {
                     "name": "Общая летальность",
@@ -267,7 +259,11 @@ class PredictionService:
         if operation_id:
             try:
                 full_saved_features = {**features, **ml_result.get("used_features", {})}
-                cd = ClinicalData(operation_id=operation_id, features=full_saved_features, created_at=datetime.utcnow())
+                cd = ClinicalData(
+                    operation_id=operation_id,
+                    features=full_saved_features,
+                    created_at=datetime.utcnow()
+                )
                 db.add(cd)
 
                 prediction = Prediction(
@@ -284,7 +280,7 @@ class PredictionService:
                 response_data["id"] = prediction.id
                 response_data["created_at"] = prediction.created_at.isoformat()
                 response_data["saved"] = True
-                
+
                 return response_data
             except Exception as e:
                 db.rollback()
@@ -292,15 +288,27 @@ class PredictionService:
 
         return response_data
 
+    
+    #  HISTORY & FORMATTING
+    
+
     @staticmethod
-    def get_predictions_list(db: Session, patient_id: Optional[int], skip: int, limit: int):
+    def get_predictions_list(
+        db: Session, patient_id: Optional[int], skip: int, limit: int
+    ):
         query = db.query(Prediction).options(
             joinedload(Prediction.operation).joinedload(Operation.patient),
             joinedload(Prediction.operation).joinedload(Operation.clinical_data),
         )
         if patient_id:
             query = query.join(Operation).filter(Operation.patient_id == patient_id)
-        predictions = query.order_by(Prediction.created_at.desc()).offset(skip).limit(limit).all()
+
+        predictions = (
+            query.order_by(Prediction.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
         return [PredictionService._format_prediction(p) for p in predictions]
 
     @staticmethod
@@ -308,49 +316,26 @@ class PredictionService:
         features = {}
         if pred.operation and pred.operation.clinical_data:
             for cd in pred.operation.clinical_data:
-                if cd.features: features.update(cd.features)
+                if cd.features:
+                    features.update(cd.features)
+
         return {
             "id": pred.id,
             "risk_score": pred.risk_score,
             "risk_level": pred.risk_level,
             "created_at": pred.created_at,
             "model_version": pred.model_version,
-            "operation": {"type": pred.operation.type, "date": pred.operation.date} if pred.operation else None,
-            "patient": {
-                "id": pred.operation.patient.id,
-                "sex": pred.operation.patient.sex,
-                "birth_date": pred.operation.patient.birth_date
-            } if pred.operation and pred.operation.patient else None,
+            "operation": (
+                {"type": pred.operation.type, "date": pred.operation.date}
+                if pred.operation else None
+            ),
+            "patient": (
+                {
+                    "id": pred.operation.patient.id,
+                    "sex": pred.operation.patient.sex,
+                    "birth_date": pred.operation.patient.birth_date
+                }
+                if pred.operation and pred.operation.patient else None
+            ),
             "features": features,
         }
-        
-    @staticmethod
-    async def get_ui_demo_data(db: Session, version: str) -> Dict[str, Any]:
-        """
-        Запрашивает сырые демо-данные у ML-сервиса и фильтрует их 
-        строго по полям, которые запросил фронтенд в ui_schema.
-        Это убивает проблему дублирования полей (например "Пол" и "Пол (0=жен,1=муж)").
-        """
-        # 1. Получаем сырую свалку демо-данных от ML
-        raw_demo_data = await ml_client.get_demo_data(version)
-        
-        # 2. Получаем актуальную структуру UI для этой версии модели
-        schema_data = await PredictionService.get_ui_schema(db, version)
-        
-        # 3. Собираем плоский набор ID полей, которые реально отрендерит фронтенд
-        allowed_ui_fields = set()
-        for block in schema_data["ui_schema"]["form_blocks"]:
-            for field in block["fields"]:
-                allowed_ui_fields.add(field["id"])
-                
-        # 4. Фильтруем демо-данные: оставляем только то, что знает интерфейс
-        filtered_demo = {}
-        for key, value in raw_demo_data.items():
-            if key in allowed_ui_fields:
-                filtered_demo[key] = value
-                
-        # Плюс гарантия наличия системных флагов
-        if "pump (0/1)" in allowed_ui_fields and "pump (0/1)" not in filtered_demo:
-            filtered_demo["pump (0/1)"] = 1
-                
-        return filtered_demo
