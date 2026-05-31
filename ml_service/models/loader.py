@@ -21,10 +21,11 @@ def detect_framework(model) -> str:
 
 def validate_model_package(package: dict) -> bool:
     """Валидирует структуру пакета модели с поддержкой обратной совместимости."""
+    print(package)
     if not isinstance(package, dict):
         print(" ❌ Invalid package format")
         return False
-        
+    
     if 'feature_names' not in package:
         print(" ❌ No 'feature_names' in package")
         return False
@@ -45,7 +46,10 @@ def load_model_from_file(file_path: Path) -> tuple:
     try:
         print(f"📦 Loading model {version}...")
         package = joblib.load(file_path)
-        
+        if 'feature_names' not in package and 'features_list' in package:
+            package['feature_names'] = package['features_list']
+        if 'categorical_features' not in package and 'categorical_cols' in package:
+            package['categorical_features'] = package['categorical_cols']
         if not validate_model_package(package):
             return None, None
         package['version'] = version

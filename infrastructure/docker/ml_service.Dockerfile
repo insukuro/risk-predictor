@@ -2,20 +2,15 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Устанавливаем curl для healthcheck
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Копируем requirements
 COPY requirements/ ./requirements/
 RUN pip install --no-cache-dir -r requirements/ml.txt
 
-# Копируем код ML сервиса
 COPY ml_service/ ./ml_service/
 
-# Создаем директорию для моделей
 RUN mkdir -p /app/ml_service/model_versions
 
-# Устанавливаем PYTHONPATH
 ENV PYTHONPATH=/app
 
 EXPOSE 8001

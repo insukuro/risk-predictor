@@ -7,6 +7,15 @@ router = APIRouter(prefix="/ui", tags=["Frontend UI Endpoints"])
 
 # --- ОПРЕДЕЛЕНИЕ СЛОВАРЯ МАППИНГА КАЛЬКУЛЯТОРОВ ---
 CALCULATOR_MAPS = {
+    "cci": {
+    "label": "Индекс коморбидности Чарлсона (CCI)",
+    "fields": [
+        "age", "sex", "weight", "creatinine", "recent_mi", "chsn",
+        "extracardiac_pathology", "stroke_history", "copd",
+        "peptic_ulcer", "diabetes"
+    ],
+    "metric_keys": ["Индекс Чарлсона"]
+    },
     "bmi": {
         "label": "Индекс массы тела (ИМТ)",
         "fields": ["weight", "height"],
