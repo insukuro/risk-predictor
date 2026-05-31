@@ -21,7 +21,6 @@ def detect_framework(model) -> str:
 
 def validate_model_package(package: dict) -> bool:
     """Валидирует структуру пакета модели с поддержкой обратной совместимости."""
-    print(package)
     if not isinstance(package, dict):
         print(" ❌ Invalid package format")
         return False
