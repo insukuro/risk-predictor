@@ -109,3 +109,11 @@ services:
     depends_on:
       risk-backend:
         condition: service_started
+  risk-docs:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/docs.Dockerfile
+    container_name: risk-predictor-docs
+    networks:
+      - docker_web-network
+    restart: always

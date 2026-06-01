@@ -1,0 +1,61 @@
+/* src/css/custom.css */
+
+:root {
+  /* Основные цвета */
+  --ifm-color-primary: #2563eb;              /* Синий — кликабельное */
+  --ifm-color-primary-dark: #1d4ed8;
+  --ifm-color-primary-darker: #1e40af;
+  --ifm-color-primary-darkest: #1e3a8a;
+  --ifm-color-primary-light: #3b82f6;
+  --ifm-color-primary-lighter: #60a5fa;
+  --ifm-color-primary-lightest: #93bbfd;
+
+  /* Код */
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+
+  /* Фон */
+  --ifm-background-color: #ffffff;
+  --ifm-navbar-background-color: #ffffff;
+  --ifm-footer-background-color: #f8fafc;
+
+  /* Текст */
+  --ifm-font-color-base: #1e293b;
+
+  /* Боковая панель */
+  --ifm-menu-color: #475569;
+  --ifm-menu-color-active: #2563eb;
+
+  /* Ссылки */
+  --ifm-link-color: #2563eb;
+
+  /* Красный — для предупреждений, danger */
+  --ifm-color-danger: #dc2626;
+  --ifm-color-danger-dark: #b91c1c;
+}
+
+/* Тёмная тема */
+[data-theme='dark'] {
+  --ifm-color-primary: #60a5fa;             
+  --ifm-color-primary-dark: #3b82f6;
+  --ifm-color-primary-darker: #2563eb;
+  --ifm-color-primary-darkest: #1d4ed8;
+  --ifm-color-primary-light: #93bbfd;
+  --ifm-color-primary-lighter: #bfdbfe;
+  --ifm-color-primary-lightest: #dbeafe;
+
+  --ifm-background-color: #0f172a;
+  --ifm-navbar-background-color: #1e293b;
+  --ifm-footer-background-color: #1e293b;
+
+  --ifm-font-color-base: #f1f5f9;
+  --ifm-menu-color: #94a3b8;
+  --ifm-menu-color-active: #60a5fa;
+
+  --ifm-link-color: #60a5fa;
+
+  --ifm-color-danger: #ef4444;
+  --ifm-color-danger-dark: #dc2626;
+
+  --docusaurus-highlighted-code-line-bg: rgba(255, 255, 255, 0.1);
+}
