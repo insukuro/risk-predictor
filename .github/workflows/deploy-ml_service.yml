@@ -31,7 +31,6 @@ jobs:
           script: |
             cd ${{ secrets.VPS_PROJECT_PATH }}
             git pull origin main
-            docker compose restart risk-ml
-            sleep 5
-            docker exec risk-predictor-ml curl -X POST http://localhost:8001/models/reload
-            echo "✅ ML models deployed and reloaded"
+            docker compose build risk-ml
+            docker compose up -d --no-deps risk-ml
+            echo "✅ ML Service (code) deployed"

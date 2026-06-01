@@ -29,5 +29,6 @@ jobs:
             git pull origin main
             docker compose restart risk-ml
             sleep 5
-            curl -X POST http://localhost:8001/models/reload
+            docker exec risk-predictor-ml curl -X POST http://localhost:8001/models/reload
+            docker compose restart risk-backend
             echo "✅ ML models deployed and reloaded"
