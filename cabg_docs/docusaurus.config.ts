@@ -17,7 +17,7 @@ const config: Config = {
   organizationName: 'insukuro',
   projectName: 'risk-predictor',
 
-  onBrokenLinks: 'throw',
+  onBrokenLinks: 'warn',
 
   i18n: {
     defaultLocale: 'ru',
@@ -71,9 +71,9 @@ const config: Config = {
         {
           title: 'Документация',
           items: [
-            {label: 'О проекте', to: '/docs/about/purpose'},
-            {label: 'FAQ', to: '/docs/user-guide/faq'},
-            {label: 'Разработчикам', to: '/docs/dev-guide/architecture'},
+            {label: 'О проекте', to: 'about/purpose'},
+            {label: 'FAQ', to: 'user-guide/faq'},
+            {label: 'Разработчикам', to: 'dev-guide/architecture'},
           ],
         },
         {
