@@ -12,7 +12,7 @@ const config: Config = {
   },
 
   url: 'https://cabg.insukuro.ru',
-  baseUrl: '/',
+  baseUrl: '/docs/',
 
   organizationName: 'insukuro',
   projectName: 'risk-predictor',
