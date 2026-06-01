@@ -87,6 +87,10 @@ risk-predictor
 │  │     └─ predictions.py
 │  ├─ clients
 │  │  └─ ml_client.py
+│  ├─ core
+│  │  ├─ __init__.py
+│  │  ├─ config.py
+│  │  └─ metadata.py
 │  ├─ db
 │  │  ├─ __init__.py
 │  │  ├─ models.py
@@ -97,6 +101,7 @@ risk-predictor
 │  │  └─ schemas.py
 │  └─ services
 │     ├─ __init__.py
+│     ├─ cache_service.py
 │     ├─ operation_service.py
 │     ├─ patient_service.py
 │     └─ prediction_service.py
@@ -185,33 +190,19 @@ risk-predictor
 │     └─ nginx.conf
 ├─ ml_service
 │  ├─ __init__.py
+│  ├─ api
+│  │  └─ routes.py
 │  ├─ config.py
+│  ├─ constants.py
 │  ├─ features
 │  │  ├─ __init__.py
-│  │  ├─ engineering.py
 │  │  ├─ importance.py
-│  │  └─ preprocessing.py
+│  │  └─ preparation.py
 │  ├─ main.py
 │  ├─ model_versions
-│  │  ├─ latest.pkl
 │  │  ├─ model_v1.pkl
 │  │  ├─ model_v2.pkl
-│  │  ├─ model_v3.pkl
-│  │  └─ tabnet
-│  │     ├─ ik
-│  │     │  ├─ preprocessors (1).pkl
-│  │     │  ├─ preprocessors.pkl
-│  │     │  ├─ tabnet_ОПН.zip
-│  │     │  ├─ tabnet_ОСН.zip
-│  │     │  ├─ tabnet_Послеоп.летальность.zip
-│  │     │  └─ tabnet_Сепсис.zip
-│  │     └─ offpump
-│  │        ├─ tabnet_Инсульт_ОНМК.zip
-│  │        ├─ tabnet_Медиастинит.zip
-│  │        ├─ tabnet_ОИМпослеАКШ (1).zip
-│  │        ├─ tabnet_ОИМпослеАКШ.zip
-│  │        ├─ tabnet_ОПН.zip
-│  │        └─ tabnet_Послеоп.летальность.zip
+│  │  └─ model_v3.pkl
 │  ├─ models
 │  │  ├─ __init__.py
 │  │  ├─ loader.py
@@ -223,13 +214,10 @@ risk-predictor
 │  └─ utils
 │     ├─ __init__.py
 │     └─ helpers.py
-├─ ml_service.zip
-├─ requirements
-│  ├─ backend.txt
-│  ├─ base.txt
-│  ├─ calc.txt
-│  └─ ml.txt
-└─ scripts
-   └─ auto-version-models.sh
+└─ requirements
+   ├─ backend.txt
+   ├─ base.txt
+   ├─ calc.txt
+   └─ ml.txt
 
 ```

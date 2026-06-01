@@ -1,27 +1,58 @@
-"""Вспомогательные функции."""
-from typing import Any
+"""Вспомогательные утилиты для нормализации данных и скоринга."""
+from typing import List, Dict, Any
+from ml_service.config import config
 
-def get_risk_level(risk_score: float) -> str:
-    """Определяет уровень риска по скору."""
-    if risk_score < 0.3:
-        return "low"
-    elif risk_score < 0.7:
+def get_risk_level_from_score(score_percent: float) -> str:
+    """Определяет уровень риска по проценту скора [0.0, 100.0]."""
+    if score_percent > config.RISK_THRESHOLDS["danger"]:
+        return "danger"
+    elif score_percent > config.RISK_THRESHOLDS["medium"]:
         return "medium"
-    return "high"
+    return "low"
 
-def normalize_risk_score(score: float) -> float:
-    """Нормализует риск скор в диапазон [0, 1]."""
-    if score <= 1:
-        return score
-    return min(score / 100, 1.0)
 
-def get_default_value(feature_name: str):
-    """Возвращает дефолтное значение для признака."""
-    # Расширенный словарь дефолтных значений
+def get_model_type(package: dict) -> str:
+    """Определяет человекочитаемый тип архитектуры модели."""
+    if package.get('is_ensemble'):
+        models_ik = package.get('models_ik', {})
+        sample_model = list(models_ik.values())[0] if models_ik else None
+        return f"Ensemble ({type(sample_model).__name__})" if sample_model else "Ensemble"
+    return type(package.get('model')).__name__ if package.get('model') else "unknown"
+
+
+def normalize_feature_keys(features: dict, expected_features: List[str]) -> dict:
+    """
+    Нормализует ключи словаря признаков для соответствия ожидаемым моделью.
+    Пример: "pump (0/1)" -> "pump", "Пол" -> "Пол"
+    """
+    normalized = {}
+    
+    for key, value in features.items():
+        if key in expected_features:
+            normalized[key] = value
+            continue
+        
+        key_clean = key.lower().replace(' ', '').replace('(', '').replace(')', '').replace('_', '').replace('/', '')
+        found = False
+        
+        for expected in expected_features:
+            expected_clean = expected.lower().replace(' ', '').replace('(', '').replace(')', '').replace('_', '').replace('/', '')
+            
+            if key_clean == expected_clean or key_clean in expected_clean or expected_clean in key_clean:
+                normalized[expected] = value
+                found = True
+                break
+        
+        if not found:
+            normalized[key] = value
+            
+    return normalized
+
+
+def get_default_value(feature_name: str) -> Any:
+    """Возвращает безопасное дефолтное значение для клинического признака."""
     defaults = {
-        # pump - критически важный
         'pump': 1,
-        # Числовые
         'Возраст (лет)': 60, 'Рост (м)': 1.70, 'Вес (кг)': 75,
         'ИМТ (кг/м²)': 25.0, 'ППТ (м²)': 1.8, 'ОЦК (л)': 5.0,
         'АД сист. исх. (мм рт.ст.)': 120, 'ЦВД исх. (мм рт.ст.)': 8,
@@ -30,30 +61,24 @@ def get_default_value(feature_name: str):
         'Число вазопрессоров': 0, 'Число ЭДФ (из примечаний)': 0,
         'EuroSCORE II (%)': 0.0, 'Индекс Чарлсона': 0,
         'Число коморбидностей': 0, 'ХБП': 0, 'ХСН ФК': 0,
-        # Категориальные строки
         'Пол': 'муж', 'Возрастная группа': '60-69',
         'Категория ИМТ': 'Норма', 'Срочность': 'Плановая',
         'Категория ФВ ЛЖ': 'Нормальная (>=50%)', 'ХСН стадия': 'I',
-        # Булевые (0/1) - все по умолчанию 0
         'Пол (0=жен,1=муж)': 1, 'Срочность (0=план,1=экстр)': 0,
         'Гипертония (0/1)': 0, 'Сахарный диабет (0/1)': 0,
         'ХОБЛ (0/1)': 0, 'ФП в анамнезе (0/1)': 0,
         'ИМ в анамнезе (0/1)': 0, 'Лёгочная гипертензия (0/1)': 0,
     }
     
-    # Ищем прямое совпадение
     if feature_name in defaults:
         return defaults[feature_name]
     
-    # Ищем по очищенному ключу
     clean_name = feature_name.lower().replace(' ', '').replace('(', '').replace(')', '')
     for key, val in defaults.items():
         clean_key = key.lower().replace(' ', '').replace('(', '').replace(')', '')
         if clean_name == clean_key or clean_key in clean_name:
             return val
-    
-    # Если признак содержит "(0/1)" - это булевый, возвращаем 0
+            
     if '(0/1)' in feature_name:
         return 0
-    
     return 0

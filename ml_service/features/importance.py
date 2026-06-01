@@ -1,25 +1,9 @@
+"""Универсальный расчет важности признаков для одиночных моделей и ансамблей."""
 from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
 from ml_service.models.loader import detect_framework
-
-# Таргеты, которые не должны быть в топе входных признаков
-TARGET_FEATURES = {
-    '30-дневная', '1-годичная_x', '1-годичная_y',
-    'Энцефалопатия', 'Диализ / ЗПТ', 'Рестернотомия',
-    'Ревизия гемостаза', 'Медиастинит / ДГНР', 'Пневмония (инф.)',
-    'Пневмония / ДН', 'ОРДС', 'Плеврит / гидроторакс',
-    # Добавьте другие если есть
-}
-
-# Дубликаты - категориальные версии, которые не нужны если есть числовые
-REDUNDANT_FEATURES = {
-    'Пол',              # дубликат "Пол (0=жен,1=муж)"
-    'Срочность',         # дубликат "Срочность (0=план,1=экстр)"
-    'Возрастная группа', # вычисляется из "Возраст (лет)"
-    'Категория ИМТ',     # вычисляется из "ИМТ (кг/м²)"
-}
-
+from ml_service.constants import TARGET_FEATURES, REDUNDANT_FEATURES
 
 def get_feature_importance(package: Dict) -> Tuple[np.ndarray, np.ndarray]:
     """Универсальное получение важности признаков (Legacy + Ensemble)."""
@@ -69,27 +53,34 @@ def get_top_features(package: Dict, top_n: int = 10) -> list:
 
 def get_input_top_features(package: Dict, top_n: int = 10) -> list:
     """
-    Возвращает топ-N входных признаков (без таргетов и дубликатов).
-    Используется для UI - показывает, какие данные нужны от пользователя.
+    Возвращает топ-N входных признаков.
+    Теперь приоритизирует категориальные признаки, если они важны.
     """
-    all_top = get_top_features(package, top_n=50)  # Берем больше, чтобы хватило после фильтрации
+    # Получаем абсолютный топ без фильтров
+    all_top = get_top_features(package, top_n=20)
+    categorical = package.get('categorical_features', [])
     
-    # Фильтруем: убираем таргеты и дубликаты
     input_features = []
     for f in all_top:
-        # Пропускаем таргеты
-        if f in TARGET_FEATURES:
+        # Если это категориальная фича модели (как 'Пол') — берем её обязательно
+        if f in categorical:
+            input_features.append(f)
             continue
-        # Пропускаем дубликаты
-        if f in REDUNDANT_FEATURES:
+            
+        # Остальное фильтруем от мусора
+        if f in TARGET_FEATURES or f in REDUNDANT_FEATURES:
             continue
-        # Пропускаем "1-годичная..." и "30-дневная" на всякий случай
         if '1-годичная' in f or '30-дневная' in f:
             continue
-        
+            
         input_features.append(f)
         
-        if len(input_features) >= top_n:
+    # Возвращаем уникальные значения, обрезанные до top_n
+    result = []
+    for f in input_features:
+        if f not in result:
+            result.append(f)
+        if len(result) >= top_n:
             break
-    
-    return input_features
+            
+    return result
