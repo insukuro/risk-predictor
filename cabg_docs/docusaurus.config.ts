@@ -24,13 +24,14 @@ const config: Config = {
     locales: ['ru'],
   },
 
-  presets: [
+presets: [
     [
       'classic',
       {
         docs: {
           sidebarPath: './sidebars.js', 
           editUrl: 'https://github.com/insukuro/risk-predictor/tree/main/docs/',
+          routeBasePath: '', 
         },
         blog: false, 
         theme: {
