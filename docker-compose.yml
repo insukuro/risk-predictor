@@ -94,7 +94,7 @@ services:
       dockerfile: infrastructure/docker/frontend.Dockerfile
       args:
         VITE_API_BASE_URL: /api
-        VITE_CALC_URL: /calc
+        VITE_CALC_URL: /api/calc
     container_name: risk-predictor-frontend
     environment:
       VIRTUAL_HOST: cabg.insukuro.ru

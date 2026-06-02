@@ -27,7 +27,7 @@ export default defineConfig({
       "/calc": {
         target: "http://localhost:8005",
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/calc/, ""),
+        rewrite: (path) => path.replace(/^\/api\/calc/, ""),
       },
     },
   },

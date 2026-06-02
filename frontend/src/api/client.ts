@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
 export const MAIN_API_URL = '/api';
-export const CALC_API_URL = '/calc';
+export const CALC_API_URL = '/api/calc';
 // Create axios instances
 export const mainApi: AxiosInstance = axios.create({
   baseURL: MAIN_API_URL,

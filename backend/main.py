@@ -13,11 +13,12 @@ load_dotenv()
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-# 2Initialize FastAPI app
+# Initialize FastAPI app
 app = FastAPI(
     title="Risk Predictor API",
     description="API for cardiovascular risk prediction",
-    version="1.0.0"
+    version="1.0.0",
+    root_path="/api"  # <-- Добавлено для корректной работы Swagger за Nginx
 )
 
 # Add CORS middleware
@@ -27,6 +28,7 @@ allowed_origins = [
     "http://localhost:8000",
     "http://frontend:22000",
     "http://localhost:8001",
+    "https://cabg.insukuro.ru", 
 ]
 
 app.add_middleware(
@@ -47,7 +49,7 @@ async def root():
     return {
         "message": "Risk Predictor API",
         "version": "1.0.0",
-        "docs": "/docs"
+        "docs": "/api/docs"
     }
 
 

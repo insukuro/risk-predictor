@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'Risk Predictor',
   tagline: 'Прогнозирование рисков осложнений после АКШ',
-  favicon: 'static/img/favicon.ico',
+  favicon: 'img/favicon.ico', 
 
   future: {
     v4: true,
@@ -65,15 +65,15 @@ const config: Config = {
         },
       ],
     },
-    footer: {
+footer: {
       style: 'dark',
       links: [
         {
           title: 'Документация',
           items: [
-            {label: 'О проекте', to: 'about/purpose'},
-            {label: 'FAQ', to: 'user-guide/faq'},
-            {label: 'Разработчикам', to: 'dev-guide/architecture'},
+            {label: 'О проекте', to: '/about/purpose'},
+            {label: 'FAQ', to: '/user-guide/faq'},
+            {label: 'Разработчикам', to: '/dev-guide/architecture'},
           ],
         },
         {
