@@ -264,21 +264,32 @@ const smartDataImport = useCallback((rawData: Record<string, any>) => {
     } catch { toast.error('Ошибка чтения буфера обмена'); }
   };
 
-  const handleLoadDemo = async () => {
-    try {
-      const apiResp = await getDemoData();
-      let demo: Record<string, any> = {};
-      if (apiResp?.data && typeof apiResp.data === 'object' && !Array.isArray(apiResp.data))
-        demo = apiResp.data;
-      else if (apiResp && typeof apiResp === 'object')
-        demo = apiResp as Record<string, any>;
-      if (Object.keys(demo).length === 0) { toast.error('Демо-данные пусты'); return; }
-      const r = smartDataImport(demo);
-      r.imported === 0
-        ? toast.warning('Не удалось сопоставить данные')
-        : toast.success(`Демо-данные загружены (${r.imported} из ${r.total})`);
-    } catch (e: any) { toast.error(e.message || 'Ошибка'); }
-  };
+const handleLoadDemo = async () => {
+  try {
+    console.log('[handleLoadDemo] selectedVersion:', selectedVersion);
+
+    const demo = await getDemoData(selectedVersion);
+
+    console.log('[handleLoadDemo] demo keys:', Object.keys(demo));
+
+    if (!demo || Object.keys(demo).length === 0) {
+      toast.error('Демо-данные пусты');
+      return;
+    }
+
+    const r = smartDataImport(demo);
+
+    if (r.imported === 0) {
+      toast.warning('Не удалось сопоставить данные');
+      console.warn('[handleLoadDemo] No fields matched. Demo data:', demo);
+      console.warn('[handleLoadDemo] Form fields:', getAllFields().map(f => f.id));
+    } else {
+      toast.success(`Демо-данные загружены (${r.imported} из ${r.total})`);
+    }
+  } catch (e: any) {
+    toast.error(e.message || 'Ошибка');
+  }
+};
 
   const handleClearForm = () => {
     if (schema) { initializeForm(schema, false); toast.info('Форма очищена'); }

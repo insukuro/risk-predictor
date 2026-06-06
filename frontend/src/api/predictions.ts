@@ -205,10 +205,26 @@ export const getPredictionHistory = async (
 /**
  * Get demo data for form
  */
-export const getDemoData = async (): Promise<FormValues> => {
+export const getDemoData = async (version?: string): Promise<FormValues> => {
   try {
-    const response = await mainApi.get<FormValues>('/predictions/ui/demo-data');
-    return response.data;
+    const params: Record<string, string> = {};
+    if (version) params.version = version;
+
+    const response = await mainApi.get('/predictions/ui/demo-data', { params });
+
+    // если ответ обёрнут в { status, data }
+    if (
+      response.data &&
+      typeof response.data === 'object' &&
+      'data' in response.data &&
+      response.data.data &&
+      typeof response.data.data === 'object'
+    ) {
+      return response.data.data as FormValues;
+    }
+
+    // fallback на старый формат
+    return response.data as FormValues;
   } catch (error: any) {
     if (USE_MOCK) {
       console.log('[MOCK] Using mock demo data');
@@ -217,7 +233,6 @@ export const getDemoData = async (): Promise<FormValues> => {
     throw new Error(handleApiError(error));
   }
 };
-
 
 /**
  * Check API health

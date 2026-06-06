@@ -71,11 +71,12 @@ async def get_demo_data(request: Request, version: str = None):
     registry = request.app.state.registry
     if not registry.models:
         raise HTTPException(status_code=503, detail="No models loaded")
-    
+
     try:
         package, actual_version = registry.get_package(version)
         demo_data = package.get('demo_data')
-        
+        framework = package.get('framework', 'unknown')
+
         if demo_data is None:
             return {
                 "version": actual_version,
@@ -83,53 +84,67 @@ async def get_demo_data(request: Request, version: str = None):
                 "message": "Demo data not embedded in this model.",
                 "demo_input_features": {}
             }
-        
-        # Получаем список фичей, которые модель РЕАЛЬНО ждет (топ-10)
-        # Мы не должны удалять их, даже если они похожи на таргеты или дубликаты
+
         required_by_model = get_top_features(package, top_n=10)
-        
+
         if isinstance(demo_data, dict):
             clean_demo = {}
+
             for k, v in demo_data.items():
-                # 1. Если фича в ТОП-10 обязательных — ОСТАВЛЯЕМ ВСЕГДА
+                # Топ-10 обязательных — оставляем всегда
                 if k in required_by_model:
                     clean_demo[k] = v
                     continue
-                
-                # 2. В противном случае применяем стандартные фильтры очистки
-                if k in TARGET_FEATURES or k in REDUNDANT_FEATURES:
+
+                if k in TARGET_FEATURES:
                     continue
+
                 if '1-годичная' in k or '30-дневная' in k:
-                    # Исключение: если это не таргет, а входная фича (редкий случай v3)
                     if k not in package['feature_names']:
                         continue
-                
+
+                # ── Изоляция фильтрации REDUNDANT для не-TabNet ──────────────
+                # 'Пол' НЕ фильтруем для TabNet — он нужен LabelEncoder
+                if framework != 'tabnet':
+                    if k in REDUNDANT_FEATURES:
+                        continue
+                    # NON_TABNET_REDUNDANT тоже применяем только для не-tabnet
+                    from ml_service.constants import NON_TABNET_REDUNDANT_FEATURES
+                    if k in NON_TABNET_REDUNDANT_FEATURES:
+                        continue
+                else:
+                    # Для TabNet фильтруем только не-нужные дубликаты
+                    if k in REDUNDANT_FEATURES:
+                        continue
+                    # 'Пол' для TabNet НЕ фильтруем
+
                 clean_demo[k] = v
-                
+
             if "pump (0/1)" not in clean_demo and "pump" not in clean_demo:
                 clean_demo["pump (0/1)"] = 1
-                
-            normalized_demo = normalize_feature_keys(clean_demo, package.get('feature_names', []))
+
+            normalized_demo = normalize_feature_keys(
+                clean_demo, package.get('feature_names', [])
+            )
         else:
             clean_demo = demo_data
             normalized_demo = demo_data
 
         prediction = predict(package, normalized_demo)
-        
+
         return {
             "version": actual_version,
             "demo_available": True,
             "demo_input_features": clean_demo,
             "demo_prediction": prediction
         }
+
     except HTTPException:
         raise
     except Exception as e:
-        # Для отладки в консоли
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Demo error: {str(e)}")
-
 
 @router.post("/predict")
 async def predict_endpoint(request: Request, payload: PredictRequest):

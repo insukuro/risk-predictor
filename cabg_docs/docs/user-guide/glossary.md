@@ -103,5 +103,5 @@ sidebar_position: 3
 
 ### Swagger
 Интерактивная документация API. Доступна по адресам:
-- Backend: `http://cabg.insukuro.ru/docs`
-- Calc Service: `http://cabg.insukuro.ru/calc/docs`
+- Backend: `http://cabg.insukuro.ru/api/docs`
+- Calc Service: `http://cabg.insukuro.ru/api/calc/docs`
