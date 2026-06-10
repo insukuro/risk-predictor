@@ -145,7 +145,7 @@ const App: React.FC = () => {
               © {new Date().getFullYear()} Risk Predictor — Система прогнозирования сердечно-сосудистых рисков
             </p>
             <p className="text-xs">
-              Версия 2.0.0 • Для медицинского использования
+              Тестовый стенд
             </p>
           </div>
         </div>

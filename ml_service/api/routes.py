@@ -50,7 +50,7 @@ async def model_info(request: Request, version: str = None):
     package, actual_version = registry.get_package(version)
     
     feature_names, _ = get_feature_importance(package)
-    top_features = get_input_top_features(package, top_n=10)
+    top_features = get_input_top_features(package, top_n=20)
     
     return {
         "version": actual_version,
